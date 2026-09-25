@@ -25,7 +25,7 @@
 
   const S = {
     all: [], scope: 'page', status: 'open',
-    pinning: false, draft: null,        // {anchor, view, part}
+    pinning: false, draft: null, moving: null,   // moving = comment whose pin is being moved        // {anchor, view, part}
     files: [], snapshot: null,          // Blobs waiting to be sent
     activeId: null, busy: false,
   };
@@ -224,6 +224,7 @@
     S.pinning = on;
     el.body.classList.toggle('pinning', on);
     el.hint.hidden = !on;
+    if (!on) { S.moving = null; el.hint.innerHTML = 'คลิกตรงจุดที่ต้องการคอมเมนต์ · <kbd>Esc</kbd> ยกเลิก'; }
     el.pinBtn.textContent = on ? '✕ ยกเลิกปักหมุด' : '📍 ปักหมุดคอมเมนต์';
   }
 
@@ -254,7 +255,18 @@
       anchor = elementAnchor(d, x, y) || anchor;
       part = partFromEl(d.elementFromPoint(x, y));
     }
-    setPinning(false);
+    const moving = S.moving;
+    setPinning(false);                  // (also clears S.moving)
+    if (moving) {                       // "ย้ายหมุด": save the new position, keep the comment
+      const c = S.all.find(x => x.id === moving);
+      if (!c) return;
+      try {
+        const u = await API.update(c.id, { anchor, view, vid: V.vid });
+        Object.assign(c, { anchor: u.anchor || anchor, view: u.view !== undefined ? u.view : view, vid: u.vid || V.vid });
+        S.activeId = c.id; render(); toast('ย้ายหมุดแล้ว');
+      } catch (err) { toast('ย้ายหมุดไม่สำเร็จ: ' + err.message); }
+      return;
+    }
     openForm({ anchor, view, part });
     if (R && snapRel) { S.snapshot = await snapshot(R, snapRel); showSnapshot(); }
   });
@@ -392,6 +404,7 @@
         '<div class="cc-body">' + esc(r.body) + '</div>' + imgsHTML(r) + '</div>').join('') + '</div>' : '') +
       '<div class="cc-ft">' +
       (c.view ? '<button class="lk" data-act="view">🎯 ไปที่มุมมอง</button>' : '') +
+      '<button class="lk" data-act="move" title="คลิกจุดใหม่บนหน้าเพื่อย้ายหมุดนี้">📍 ย้ายหมุด</button>' +
       '<button class="lk" data-act="reply">↩ ตอบกลับ</button>' +
       '<button class="lk ok" data-act="status">' + (isDone(c) ? '↺ เปิดใหม่' : '✓ แก้แล้ว') + '</button>' +
       '<button class="lk" data-act="link" title="คัดลอกลิงก์">🔗</button>' +
@@ -420,6 +433,12 @@
     if (!act) { focusComment(c); return; }
     const a = act.dataset.act;
     if (a === 'view') focusComment(c);
+    else if (a === 'move') {
+      await focusComment(c);            // open the page/version the comment belongs to first
+      closeForm(); S.moving = c.id; setPinning(true);
+      el.hint.innerHTML = 'คลิกจุดใหม่ของหมุด #' + esc(c.no || '') + ' · <kbd>Esc</kbd> ยกเลิก';
+      el.body.classList.remove('cm-open');
+    }
     else if (a === 'reply') openReply(card, c);
     else if (a === 'link') {
       const url = location.href.split('#')[0] + '#' + c.page + '@' + vidOf(c) + '/c=' + c.id;
@@ -556,5 +575,18 @@
     }
     // keep everyone's view in sync
     if (mode === 'remote') setInterval(() => { if (!document.hidden && el.form.hidden && !$('.rp-form')) { refresh(); V.reload().catch(() => {}); } }, 30000);
+    // tell open tabs when the site itself was redeployed, so nobody keeps working on old code
+    const stamp = async () => { try { const r = await fetch('/assets/js/comments.js', { method: 'HEAD', cache: 'no-store' }); return r.headers.get('etag') || r.headers.get('last-modified') || ''; } catch (e) { return ''; } };
+    const first = await stamp();
+    if (first) setInterval(async () => {
+      if (document.hidden || $('#site-updated')) return;
+      const now = await stamp();
+      if (now && now !== first) {
+        const b = document.createElement('div'); b.id = 'site-updated'; b.className = 'toast';
+        b.innerHTML = 'เว็บมีการอัพเดท · <a href="#" style="color:#fff;font-weight:700">รีโหลดหน้า</a>';
+        b.querySelector('a').onclick = e => { e.preventDefault(); location.reload(); };
+        document.body.appendChild(b);
+      }
+    }, 60000);
   })();
 })();
