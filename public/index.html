@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BMS 3D — Design Review</title>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- ───────── Left: page navigation ───────── -->
+<aside id="nav">
+  <div class="hd"><h1>BMS 3D — Design Review</h1><span>Draft for approval · 24 Sept 2026</span></div>
+
+  <div class="grp">
+    <button class="nb" data-k="ct5-3d"><span class="p">Silom Complex</span><b>CT-5 Cooling Tower</b><small>Fill media, internal spray, in-pipe flow</small></button>
+    <div class="sub"><button class="sb" data-k="ct5-sheet">Review sheet</button><button class="sb" data-k="ct5-3d">3D model</button></div>
+  </div>
+
+  <div class="grp">
+    <button class="nb" data-k="ch-3d"><span class="p">Silom Complex</span><b>Chiller-05 RTHD v3</b><small>Screw rotor, boiling shell, stop state</small></button>
+    <div class="sub"><button class="sb" data-k="ch-sheet">Review sheet</button><button class="sb" data-k="ch-3d">3D model</button></div>
+  </div>
+
+  <div class="grp">
+    <button class="nb" data-k="fcu-3d"><span class="p">Rosewood Bangkok</span><b>FCU B6F-01</b><small>Ducted fan coil, 40VDS type</small></button>
+    <div class="sub"><button class="sb" data-k="fcu-3d">3D model</button></div>
+  </div>
+
+  <div class="grp">
+    <button class="nb" data-k="oau-3d"><span class="p">Rosewood Bangkok</span><b>OAU 19OAU-01</b><small>Outdoor air unit, belt-drive fan, CHW coil</small></button>
+    <div class="sub"><button class="sb" data-k="oau-3d">3D model</button></div>
+  </div>
+
+  <div class="ft">3D: drag to rotate, scroll to zoom.<br>Best in Chrome or Edge.</div>
+</aside>
+
+<!-- ───────── Centre: viewer + pin overlay ───────── -->
+<main id="viewer">
+  <div id="ld">Loading…</div>
+  <iframe id="fr" title="Viewer"></iframe>
+  <div id="ov" aria-hidden="true"></div>          <!-- catches clicks while pinning -->
+  <div id="pins"></div>                           <!-- numbered pins drawn over the viewer -->
+  <div id="pinhint" hidden>คลิกตรงจุดที่ต้องการคอมเมนต์ · <kbd>Esc</kbd> ยกเลิก</div>
+  <button id="cm-toggle" class="fab" type="button" title="ความคิดเห็น">💬 <span id="cm-badge">0</span></button>
+</main>
+
+<!-- ───────── Right: comments ───────── -->
+<section id="cm" aria-label="ความคิดเห็น">
+  <header class="cm-hd">
+    <div class="cm-title"><h2>ความคิดเห็น</h2><span id="cm-mode" class="mode"></span><button id="cm-close" class="x-only" type="button" aria-label="ปิด">✕</button></div>
+    <div class="cm-actions">
+      <button id="pin-btn" class="btn pri" type="button">📍 ปักหมุดคอมเมนต์</button>
+      <button id="new-btn" class="btn" type="button" title="คอมเมนต์ทั้งหน้า ไม่ระบุจุด">＋ ทั่วไป</button>
+    </div>
+    <div class="cm-filters">
+      <div class="seg" id="f-scope"><button data-v="page" class="on">หน้านี้</button><button data-v="all">ทุกหน้า</button></div>
+      <div class="seg" id="f-status"><button data-v="open" class="on">เปิดอยู่</button><button data-v="done">แก้แล้ว</button><button data-v="all">ทั้งหมด</button></div>
+    </div>
+  </header>
+
+  <!-- New-comment form (hidden until a pin is placed or "ทั่วไป" is clicked) -->
+  <form id="cm-form" hidden autocomplete="off">
+    <div class="f-where" id="f-where"></div>
+    <label>ชื่อผู้คอมเมนต์<input name="author" required maxlength="80" placeholder="เช่น Jays"></label>
+    <div class="f-row">
+      <label>ส่วน / อุปกรณ์<input name="part" maxlength="200" list="part-list" placeholder="เช่น Fill media, CHWS valve"></label>
+      <label class="f-date">วันที่<input type="date" name="review_date" required></label>
+    </div>
+    <label>ข้อความ<textarea name="body" rows="4" required maxlength="5000" placeholder="รายละเอียดที่ต้องแก้ / อัพเดท… (วางรูปด้วย Ctrl+V ได้)"></textarea></label>
+
+    <div class="f-snap" id="f-snap" hidden>
+      <label class="chk"><input type="checkbox" id="snap-on" checked> แนบภาพมุมมองปัจจุบัน (พร้อมหมุด)</label>
+      <img id="snap-img" alt="ภาพมุมมอง">
+    </div>
+
+    <div class="drop" id="drop">
+      <input type="file" id="file" accept="image/*" multiple hidden>
+      <button type="button" class="btn sm" id="file-btn">🖼 แนบรูป</button>
+      <span>หรือลากรูปมาวางที่นี่</span>
+    </div>
+    <div class="thumbs" id="f-thumbs"></div>
+
+    <div class="f-btns">
+      <button type="button" class="btn" id="f-cancel">ยกเลิก</button>
+      <button type="submit" class="btn pri" id="f-submit">ส่งคอมเมนต์</button>
+    </div>
+    <p class="f-err" id="f-err" hidden></p>
+  </form>
+  <datalist id="part-list"></datalist>
+
+  <div id="cm-list" class="cm-list"></div>
+</section>
+
+<!-- Image lightbox -->
+<div id="lb" hidden><img alt=""><button type="button" aria-label="ปิด">✕</button></div>
+
+<script src="assets/js/app.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/comments.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+name = "bms-3d-review"
+compatibility_date = "2025-09-01"
+pages_build_output_dir = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bms-review"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"   # from: npx wrangler d1 create bms-review
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "bms-review-images"
+
+# Optional shared password for posting comments:
+#   npx wrangler pages secret put REVIEW_KEY

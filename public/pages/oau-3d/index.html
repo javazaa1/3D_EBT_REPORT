@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Rosewood 19OAU-01 — 3D</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="top">
+<h1>Outdoor Air Unit<span>Rosewood Bangkok · Air Condition</span></h1>
+<div class="meta"><div>Equipment<b>19OAU-01</b></div><div>Floor<b>FL19</b></div><div>Next schedule<b>On · 24 Sep 04:30</b></div></div>
+</div>
+<div id="app">
+<aside>
+<div class="sec"><div class="k">Status</div><div class="lamps"><span id="st-on">On</span><span id="st-trip">Trip</span><span id="st-off">Off</span></div></div>
+<div class="sec"><div class="k">Control</div><div class="row"><button class="btn" id="btn-run">Start</button><button class="btn" id="btn-stop">Stop</button></div></div>
+<div class="sec"><div class="k">Operation selector</div><div class="row"><button class="btn" id="btn-auto">Auto</button><button class="btn" id="btn-hand">Hand</button></div><div class="sel ok" id="sel">IN AUTO</div></div>
+<div class="sec"><div class="k">Casing</div><div class="row"><button class="btn" data-casing="open">Open</button><button class="btn" data-casing="closed">Closed</button></div></div>
+<div class="sec"><div class="k">Flow</div><div class="legend"><span><i style="background:#d9a06a"></i>Outdoor air in</span><span><i style="background:#5fb8e8"></i>Supply air out</span><span><i style="background:#2f6fb3"></i>CHWS to coil</span><span><i style="background:#7aa7d6"></i>CHWR via control valve</span></div></div>
+</aside>
+<div id="stage">
+<div class="stat on" id="stat">RUNNING</div>
+<div id="views"><button class="vb active" id="v-iso">Iso</button><button class="vb" id="v-front">Front</button><button class="vb" id="v-air">Inlet</button><button class="vb" id="v-top">Top</button></div>
+<div class="co ul" id="c-lat"><div class="card"><span class="k">Leaving temp</span><span class="v" id="v-lat">—</span><span class="s" id="v-latsp">—</span></div></div>
+<div class="co up" id="c-cv"><div class="card"><span class="k">Control valve</span><span class="v" id="v-cv">—</span></div></div>
+<div class="co lf" id="c-pa"><div class="card"><span class="k">Duct pressure</span><span class="v" id="v-pa">—</span><span class="s" id="v-pasp">—</span></div></div>
+<div class="co dr" id="c-vsd"><div class="card"><span class="k">VSD</span><span class="v" id="v-vsd">—</span><span class="s"><span id="v-hz">—</span> · <span id="v-fault">—</span></span></div></div>
+<div class="co dn" id="c-flt"><div class="card"><span class="k">Filter clog</span><span class="v" id="v-flt">—</span></div></div>
+</div>
+</div>
+<script src="../../vendor/three.min.js"></script>
+<script src="../../vendor/OrbitControls.js"></script>
+<script src="main.js"></script>
+
+</body></html>

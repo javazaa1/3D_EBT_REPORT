@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silom Complex — Trane Series R (RTHD) Screw Chiller 3D · v3 Pipe Flow</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage"></div>
+<div id="tags"></div>
+
+<div id="tb" class="panel">
+  <div class="bd">
+    <span class="led on" id="led"></span>
+    <div><b>CHILLER-05 · RTHD</b><span style="display:block">Trane Series R helical-rotary · water-cooled</span></div>
+    <span class="src sim" id="r-src">SIM</span>
+  </div>
+  <div class="clk"><b id="tb-time">--:--:--</b><span id="tb-date">—</span></div>
+</div>
+
+<div id="rail">
+  <div id="ctl" class="panel">
+    <div class="bar"><h2>CHILLER-05</h2><span class="stt on" id="r-state">RUNNING</span></div>
+    <div class="body">
+      <div class="grp">
+        <div class="lab">สั่งเดินเครื่อง</div>
+        <div class="row">
+          <button class="btn active" id="btn-run">START</button>
+          <button class="btn" id="btn-stop">STOP</button>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="lab">มุมมองเปลือก · <span id="ghost-note" style="color:var(--cyan)">เปลือกทึบ</span></div>
+        <div class="row"><button class="btn" id="btn-ghost">มองทะลุดูการไหลในเปลือก</button></div>
+      </div>
+      <div class="grp">
+        <div class="lab">คอมเพรสเซอร์สกรู · <span id="rotor-note" style="color:var(--cyan)">เรือนปิด</span></div>
+        <div class="row"><button class="btn" id="btn-rotor">ผ่าเรือนดูโรเตอร์สกรูหมุน</button></div>
+      </div>
+      <div class="grp">
+        <div class="lab">ป้ายชี้ชิ้นส่วน</div>
+        <div class="row"><button class="btn active" id="btn-tags">แสดงชื่อชิ้นส่วน</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="layers" class="panel">
+    <div class="lb">เลเยอร์</div>
+    <button class="tg" data-layer="evap"><i style="background:#1d1e21"></i>Evap</button>
+    <button class="tg" data-layer="cond"><i style="background:#c9c3a4"></i>Cond</button>
+    <button class="tg" data-layer="comp"><i style="background:#b6b095"></i>Comp</button>
+    <button class="tg" data-layer="panel"><i style="background:#cb352a"></i>Panel</button>
+    <button class="tg" data-layer="pipes"><i style="background:#e2a81e"></i>Pipe</button>
+    <button class="tg" data-layer="base"><i style="background:#1b1817"></i>Base</button>
+    <button class="tg" data-layer="flow"><i style="background:#4fd2f0"></i>Flow</button>
+    <button class="tg" data-layer="room"><i style="background:#4d5459"></i>Room</button>
+  </div>
+</div>
+
+<div id="views" class="panel">
+  <button class="vb active" id="v-iso">Iso</button>
+  <button class="vb" id="v-panel">Starter</button>
+  <button class="vb" id="v-comp">Compressor</button>
+  <button class="vb" id="v-side">Side</button>
+  <button class="vb" id="v-top">Top</button>
+  <button class="vb" id="v-rotor">Rotor</button>
+</div>
+
+<div id="strip" class="panel">
+  <div class="r"><span><i class="dot" style="background:#7fa8dc"></i>CHWS ออก</span><b id="r-chws">7.0<u>°C</u></b></div>
+  <div class="r"><span><i class="dot" style="background:#3f4c86"></i>CHWR เข้า</span><b id="r-chwr">12.2<u>°C</u></b></div>
+  <div class="r"><span>ΔT น้ำเย็น</span><b id="r-dt">5.2<u>K</u></b></div>
+  <div class="r"><span><i class="dot" style="background:#e2a81e"></i>CDWS เข้า</span><b id="r-cdws">30.4<u>°C</u></b></div>
+  <div class="r"><span><i class="dot" style="background:#d9691f"></i>CDWR ออก</span><b id="r-cdwr">35.4<u>°C</u></b></div>
+  <div class="r"><span>ประสิทธิภาพ</span><b id="r-kwrt">0.58<u>kW/RT</u></b></div>
+  <div class="ref">
+    <div class="h">สีท่อ</div>
+    <div><i class="dot" style="background:#7fa8dc"></i>CHWS น้ำเย็นจ่าย</div>
+    <div><i class="dot" style="background:#e2a81e"></i>CDWS ระบายความร้อนเข้า</div>
+    <div><i class="dot" style="background:#3f4c86"></i>CHWR น้ำเย็นกลับ</div>
+    <div><i class="dot" style="background:#d9691f"></i>CDWR ระบายความร้อนออก</div>
+  </div>
+  <div class="tip">🖱️ ลากหมุน · สกรอลล์ซูม · คลิกขวาเลื่อน · กด “มองทะลุ” ดูน้ำไหลในเปลือก · เมื่อเครื่องเดิน พัดลมมอเตอร์หมุน ไฟสัญญาณบนตู้กะพริบ และท่ออัดร้อนขึ้นตามโหลด · กด STOP แล้วทุกอย่างค่อย ๆ หยุด</div>
+</div>
+
+<script src="../../vendor/three.min.js"></script>
+<script src="../../vendor/OrbitControls.js"></script>
+<script src="main.js"></script>
+
+</body></html>

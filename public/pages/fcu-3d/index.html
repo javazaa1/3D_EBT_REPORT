@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Rosewood FCU B6F-01 — 3D</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+<aside>
+<div class="hd"><h1>Fan Coil Unit</h1><span>Rosewood Bangkok · B6F</span></div>
+<div class="sec"><div class="k">Command</div><div class="row"><button class="btn" id="btn-run">Start</button><button class="btn" id="btn-stop">Stop</button></div></div>
+<div class="sec"><div class="k">Fan speed</div><div class="row"><button class="btn" data-fan="Auto">Auto</button><button class="btn" data-fan="Low">Low</button><button class="btn" data-fan="Med">Med</button><button class="btn" data-fan="High">High</button></div></div>
+<div class="sec"><div class="k">View</div><div class="row"><button class="btn" id="btn-cut">Cutaway</button></div></div>
+<div class="tstat"><div class="big"><span id="tsT">22.1</span><small> °C</small></div><div class="s">Fan <b id="tsF">Auto</b><br>Cool · <b id="tsO">On</b></div><div class="brand">Room thermostat</div></div>
+</aside>
+<div id="stage">
+<div class="stat on" id="stat">RUNNING</div>
+<div id="views"><button class="vb active" id="v-iso">Iso</button><button class="vb" id="v-front">Front</button><button class="vb" id="v-side">Side</button><button class="vb" id="v-under">Under</button></div>
+<div id="tag">B6F-01</div>
+</div>
+<aside>
+<div class="hd"><h1>Thermostat</h1><span>FCU B6F-01 · 40VDS</span></div>
+<div class="sec"><div class="k">Command</div><div class="pt"><span>Command</span><span class="val on" id="cmd">On</span></div></div>
+<div class="sec"><div class="k">Status</div><div class="pt"><span>Mode</span><span class="val" id="mode">Cool</span><span>Fan speed</span><span class="val" id="fan">Auto</span></div></div>
+<div class="sec"><div class="k">Analog value &amp; setpoint</div><div class="pt"><span>Temperature</span><span class="val" id="temp">22.1 °C</span><span>Setpoint</span><span class="val" id="sp">19.5 °C</span><span>Valve</span><span class="val" id="valve">Open</span></div></div>
+<div class="sec"><div class="k">Flow</div><div class="legend"><span><i style="background:#2f6fb3"></i>CHWS · supply into coil</span><span><i style="background:#7aa7d6"></i>CHWR · return via 2-way valve</span><span><i style="background:#d9a06a"></i>Return air into filter</span><span><i style="background:#7fd0ff"></i>Supply air to duct</span></div></div>
+</aside>
+</div>
+<script src="../../vendor/three.min.js"></script>
+<script src="../../vendor/OrbitControls.js"></script>
+<script src="main.js"></script>
+
+</body></html>

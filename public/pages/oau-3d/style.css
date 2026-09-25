@@ -1,0 +1,42 @@
+:root{--bone:#eae5dc;--bone2:#f4f1ea;--ink:#1a231f;--ink-soft:#5d6862;--line:#cdc6b8;--jade:#2f4f43;--jade-soft:#7d9a8c;--clay:#a8583c}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bone);font-family:'Archivo',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:var(--jade)}a:hover{color:var(--clay)}
+#top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:18px 24px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#top h1{font-family:'Newsreader',serif;font-weight:300;font-size:32px;line-height:1}
+#top h1 span{display:block;margin-top:6px;font:400 10.5px 'Archivo',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft)}
+.meta{display:flex;gap:26px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+.meta b{display:block;margin-top:4px;font:400 20px 'Newsreader',serif;letter-spacing:0;text-transform:none;color:var(--ink)}
+#app{display:grid;grid-template-columns:230px minmax(0,1fr);height:calc(100% - 78px)}
+aside{border-right:1px solid var(--line);overflow:auto}
+.sec{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
+.k{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft)}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.btn{font:500 11.5px 'Archivo',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;border:1px solid var(--line);background:var(--bone2);color:var(--ink);border-radius:999px;cursor:pointer}
+.btn:hover{border-color:var(--jade)}.btn.active{background:var(--jade);border-color:var(--jade);color:#f1ece3}
+#btn-stop.active,#btn-hand.active{background:var(--clay);border-color:var(--clay)}
+.lamps{display:flex;gap:14px;font-size:12px;letter-spacing:.1em}
+.lamps span{display:flex;align-items:center;gap:6px;color:var(--ink-soft)}
+.lamps span::before{content:"";width:9px;height:9px;border-radius:50%;background:#c8c2b5}
+#st-on.lit::before{background:#3fd977;box-shadow:0 0 8px #3fd977}#st-on.lit{color:var(--jade)}
+#st-trip.lit::before{background:var(--clay)}#st-off.lit::before{background:var(--clay)}#st-off.lit{color:var(--clay)}
+.sel{font-size:11px;letter-spacing:.16em;padding:5px 10px;border-radius:4px;align-self:flex-start}
+.sel.ok{background:#dfe8e2;color:var(--jade)}.sel.warn{background:var(--clay);color:#fff}
+.legend{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--ink-soft)}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;margin-right:8px;vertical-align:middle}
+#stage{position:relative;min-width:0;overflow:hidden}
+#stage canvas{display:block}
+#views{position:absolute;top:14px;right:14px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:calc(100% - 140px);z-index:3}
+.vb{font:500 11px 'Archivo',sans-serif;letter-spacing:.12em;text-transform:uppercase;padding:7px 11px;border:1px solid var(--line);background:rgba(244,241,234,.9);border-radius:999px;cursor:pointer;color:var(--ink)}
+.vb.active,.vb:hover{border-color:var(--jade);color:var(--jade)}
+.stat{position:absolute;left:14px;top:14px;z-index:3;font-size:11px;letter-spacing:.2em;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(244,241,234,.9)}
+.stat.on{color:var(--jade);border-color:var(--jade-soft)}.stat.off{color:var(--clay);border-color:var(--clay)}
+.co{position:absolute;left:0;top:0;z-index:2;pointer-events:none}.co .card{isolation:isolate}
+.co .card{position:absolute;background:rgba(247,245,240,.96);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:96px;box-shadow:0 4px 14px rgba(26,35,31,.08);display:flex;flex-direction:column;gap:2px}
+.co .card::after{content:"";position:absolute;z-index:-1;width:8px;height:8px;border-radius:50%;background:var(--clay);border:2px solid #f7f5f0}
+.co .k{font-size:9px}
+.co .v{font:400 17px 'Newsreader',serif;font-variant-numeric:tabular-nums;line-height:1.1}
+.co .s{font-size:11px;color:var(--ink-soft)}
+.up .card{bottom:34px;left:-20px}.up .card::after{left:14px;bottom:-39px}
+.dn .card{top:44px;left:-20px}.dn .card::after{left:14px;top:-49px}
+.ul .card{bottom:24px;right:30px}.ul .card::after{right:-24px;bottom:-29px}.dr .card{top:44px;left:40px}.dr .card::after{left:-6px;top:-49px}.lf .card{bottom:14px;right:-20px}.lf .card::after{right:14px;bottom:-19px}
