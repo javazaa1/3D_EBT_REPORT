@@ -3,7 +3,7 @@
 // D1 / R2 have no IDs on purpose: wrangler creates them on the first deploy (or reuses ones with the same name).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bms-3d-review",
+  "name": "3d-ebt-report",
   "main": "src/worker.js",
   "compatibility_date": "2025-09-01",
   // converts uploads/*.html → public/p, public/lib, public/src before every deploy
