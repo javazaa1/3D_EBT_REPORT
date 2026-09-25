@@ -88,6 +88,13 @@ export async function update({ params, request, env }) {
     if (!b) return json({ error: 'ข้อความว่าง' }, 400);
     sets.push('body = ?'); vals.push(b);
   }
+  if (p.anchor !== undefined) {           // "ย้ายหมุด": new pin position (and 3D camera view)
+    const a = cleanAnchor(p.anchor);
+    if (!a) return json({ error: 'ตำแหน่งหมุดไม่ถูกต้อง' }, 400);
+    sets.push('anchor = ?'); vals.push(JSON.stringify(a));
+    if (p.vid !== undefined && VID_RE.test(String(p.vid))) { sets.push('vid = ?'); vals.push(String(p.vid)); }
+    if (p.view !== undefined) { const v = cleanView(p.view); sets.push('view = ?'); vals.push(v ? JSON.stringify(v) : null); }
+  }
   if (!sets.length) return json({ error: 'Nothing to update' }, 400);
   sets.push('updated_at = ?'); vals.push(new Date().toISOString());
   const r = await env.DB.prepare(`UPDATE comments SET ${sets.join(', ')} WHERE id = ?`).bind(...vals, params.id).run();
