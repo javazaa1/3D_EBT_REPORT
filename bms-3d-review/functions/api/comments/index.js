@@ -1,0 +1,78 @@
+// GET  /api/comments[?page=ct5-3d]   → { comments: [...] }
+// POST /api/comments  (multipart/form-data)
+//      page, author, body, part?, review_date?, parent_id?, anchor? (JSON), view? (JSON), images[] (files)
+import {
+  json, PAGE_RE, IMAGE_TYPES, MAX_FILES, MAX_FILE_BYTES,
+  parseJSON, toComment, todayTH, cleanAnchor, cleanView,
+} from '../../../lib/review.js';
+
+export async function onRequestGet({ request, env }) {
+  const page = new URL(request.url).searchParams.get('page');
+  const stmt = page
+    ? env.DB.prepare('SELECT * FROM comments WHERE page = ? ORDER BY created_at').bind(page)
+    : env.DB.prepare('SELECT * FROM comments ORDER BY created_at');
+  const { results } = await stmt.all();
+  return json({ comments: results.map(toComment) });
+}
+
+export async function onRequestPost({ request, env }) {
+  if (!(request.headers.get('content-type') || '').includes('multipart/form-data'))
+    return json({ error: 'Send multipart/form-data' }, 415);
+  const f = await request.formData();
+  const str = (k, max) => String(f.get(k) ?? '').trim().slice(0, max);
+
+  const page = str('page', 40);
+  if (!PAGE_RE.test(page)) return json({ error: 'Invalid page' }, 400);
+  const body = str('body', 5000);
+  if (!body) return json({ error: 'ข้อความว่าง' }, 400);
+
+  // Behind Cloudflare Access the signed-in e-mail is trusted over the typed name.
+  const author = (request.headers.get('cf-access-authenticated-user-email') || str('author', 80)).slice(0, 80) || 'ไม่ระบุชื่อ';
+  const part = str('part', 200) || null;
+  const d = str('review_date', 10);
+  const review_date = /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayTH();
+
+  let parent_id = str('parent_id', 64) || null;
+  if (parent_id) {
+    const p = await env.DB.prepare('SELECT id, page FROM comments WHERE id = ? AND parent_id IS NULL').bind(parent_id).first();
+    if (!p || p.page !== page) return json({ error: 'Parent comment not found' }, 400);
+  }
+  const anchor = parent_id ? null : cleanAnchor(parseJSON(f.get('anchor')));
+  const view = parent_id ? null : cleanView(parseJSON(f.get('view')));
+
+  // Validate every file before storing any of them.
+  const files = f.getAll('images').filter(x => x && typeof x === 'object' && x.size > 0);
+  if (files.length > MAX_FILES) return json({ error: `แนบได้สูงสุด ${MAX_FILES} รูป` }, 400);
+  for (const file of files) {
+    if (!IMAGE_TYPES[file.type]) return json({ error: `ไฟล์ ${file.name} ไม่ใช่รูป (jpg/png/webp/gif)` }, 400);
+    if (file.size > MAX_FILE_BYTES) return json({ error: `ไฟล์ ${file.name} ใหญ่เกิน 8 MB` }, 413);
+  }
+
+  const id = crypto.randomUUID();
+  const images = [];
+  for (const file of files) {
+    const key = `${page}/${id}/${images.length + 1}.${IMAGE_TYPES[file.type]}`;
+    await env.IMAGES.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+    images.push(key);
+  }
+
+  let no = null;
+  if (!parent_id) {
+    const r = await env.DB.prepare('SELECT COALESCE(MAX(no), 0) + 1 AS n FROM comments WHERE page = ? AND parent_id IS NULL').bind(page).first();
+    no = r.n;
+  }
+  const created_at = new Date().toISOString();
+  const row = {
+    id, page, parent_id, no, author, part, body, review_date,
+    anchor: anchor ? JSON.stringify(anchor) : null,
+    view: view ? JSON.stringify(view) : null,
+    images: JSON.stringify(images), status: 'open', created_at, updated_at: null,
+  };
+  await env.DB.prepare(
+    `INSERT INTO comments (id, page, parent_id, no, author, part, body, review_date, anchor, view, images, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(row.id, row.page, row.parent_id, row.no, row.author, row.part, row.body, row.review_date,
+         row.anchor, row.view, row.images, row.status, row.created_at).run();
+
+  return json(toComment(row), 201);
+}

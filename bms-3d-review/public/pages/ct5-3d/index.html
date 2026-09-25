@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="th"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silom Complex — CT-5 Cooling Tower Bank 3D</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage"></div>
+<div id="tags"></div>
+
+<div id="tb" class="panel">
+  <div class="bd">
+    <span class="led on" id="led"></span>
+    <div><b id="unit-tag">CT-5-01 / 02 / 03</b><span style="display:block">Induced-draft cooling tower bank · CPMS</span></div>
+    <span class="src sim" id="r-src">SIM</span>
+  </div>
+  <div class="clk"><b id="tb-time">--:--:--</b><span id="tb-date">—</span></div>
+</div>
+
+<div id="rail">
+  <div id="ctl" class="panel">
+    <div class="bar"><h2>CT-5 BANK</h2><span class="stt on" id="r-state">RUNNING 2/3</span></div>
+    <div class="body">
+      <div class="cell">
+        <div class="ch"><span class="led on" id="c1-led"></span><b id="c1-tag">CT-5-01</b><span class="stt on" id="c1-state">RUN</span></div>
+        <div class="mx"><span id="c1-sp">78.0</span><u>%</u><span id="c1-hz">39.0</span><u>Hz</u><span id="c1-kw">27.8</span><u>kW</u></div>
+        <div class="sr"><input type="range" id="c1-sl" min="0" max="100" step="1" value="78"><button class="cb active" id="c1-btn">STOP</button></div>
+      </div>
+      <div class="cell">
+        <div class="ch"><span class="led on" id="c2-led"></span><b id="c2-tag">CT-5-02</b><span class="stt on" id="c2-state">RUN</span></div>
+        <div class="mx"><span id="c2-sp">78.0</span><u>%</u><span id="c2-hz">39.0</span><u>Hz</u><span id="c2-kw">27.8</span><u>kW</u></div>
+        <div class="sr"><input type="range" id="c2-sl" min="0" max="100" step="1" value="78"><button class="cb active" id="c2-btn">STOP</button></div>
+      </div>
+      <div class="cell">
+        <div class="ch"><span class="led off" id="c3-led"></span><b id="c3-tag">CT-5-03</b><span class="stt off" id="c3-state">STOP</span></div>
+        <div class="mx"><span id="c3-sp">0.0</span><u>%</u><span id="c3-hz">0.0</span><u>Hz</u><span id="c3-kw">0.00</span><u>kW</u></div>
+        <div class="sr"><input type="range" id="c3-sl" min="0" max="100" step="1" value="0"><button class="cb" id="c3-btn">START</button></div>
+      </div>
+      <div class="grp">
+        <div class="lab">สั่งทั้งชุด</div>
+        <div class="row"><button class="btn" id="btn-all">START / STOP ทุกเซลล์</button></div>
+      </div>
+      <div class="grp">
+        <div class="lab">มุมมองตัวเรือน · <span id="cut-note" style="color:var(--cyan)">ตัวเรือนทึบ</span></div>
+        <div class="row"><button class="btn" id="btn-cut">ผ่าดูน้ำตกในชั้นฟิล</button></div>
+      </div>
+      <div class="grp">
+        <div class="lab">ป้ายชี้ชิ้นส่วน</div>
+        <div class="row"><button class="btn active" id="btn-tags">แสดงชื่อชิ้นส่วน</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="layers" class="panel">
+    <div class="lb">เลเยอร์</div>
+    <button class="tg" data-layer="frame"><i style="background:#b9bdb4"></i>Frame</button>
+    <button class="tg" data-layer="casing"><i style="background:#cfcdc0"></i>Casing</button>
+    <button class="tg" data-layer="fans"><i style="background:#8f948c"></i>Fans</button>
+    <button class="tg" data-layer="pipes"><i style="background:#c98a52"></i>Pipe</button>
+    <button class="tg" data-layer="valves"><i style="background:#6d737a"></i>Valve</button>
+    <button class="tg" data-layer="basin"><i style="background:#3fa7c4"></i>Basin</button>
+    <button class="tg" data-layer="flow"><i style="background:#f0c24a"></i>Flow</button>
+  </div>
+</div>
+
+<div id="views" class="panel">
+  <button class="vb active" id="v-iso">Iso</button>
+  <button class="vb" id="v-fans">Fans</button>
+  <button class="vb" id="v-louvre">Louvre</button>
+  <button class="vb" id="v-pipes">Pipe</button>
+  <button class="vb" id="v-side">Side</button>
+  <button class="vb" id="v-top">Top</button>
+  <button class="vb" id="v-cut" onclick="document.getElementById('btn-cut').click();this.classList.toggle('active',document.getElementById('btn-cut').classList.contains('active'))">Cutaway</button>
+</div>
+
+<div id="strip" class="panel">
+  <div class="r"><span>เซลล์ที่เดิน</span><b id="r-run">2/3</b></div>
+  <div class="r"><span>กำลังไฟรวม</span><b id="r-kw">55.6<u>kW</u></b></div>
+  <div class="r"><span><i class="dot" style="background:#c98a52"></i>CDWR เข้า</span><b id="r-hdr">35.2<u>°C</u></b></div>
+  <div class="r"><span><i class="dot" style="background:#3fa7c4"></i>น้ำในบ่อ</span><b id="r-basin">30.4<u>°C</u></b></div>
+  <div class="r"><span>เรนจ์</span><b id="r-range">4.8<u>K</u></b></div>
+  <div class="r"><span>ระดับน้ำ</span><b id="r-level">62<u>%</u></b></div>
+  <div class="ref">
+    <div class="h">ทางน้ำ</div>
+    <div><i class="dot" style="background:#c98a52"></i>CDWR น้ำร้อนกลับจากคอนเดนเซอร์ เข้าหัวจ่ายด้านบน</div>
+    <div><i class="dot" style="background:#d8c21a"></i>CDWS น้ำเย็นออกจากบ่อ ไปปั๊ม CDWP</div>
+    <div><i class="dot" style="background:#4f9ec7"></i>Makeup น้ำเติม · ball float + โซลินอยด์</div>
+    <div><i class="dot" style="background:#8b9197"></i>Overflow · Drain · Blowdown ลงราง</div>
+  </div>
+  <div class="tip">🖱️ ลากหมุน · สกรอลล์ซูม · คลิกขวาเลื่อน · ปรับสไลด์ VSD ทีละเซลล์ · กด “ผ่าดู” เห็นน้ำตกผ่านชั้นฟิล · เซลล์ที่เดินมีแถบเขียววิ่งรอบปล่องพัดลม · วาล์ว CDR/CDS เปิดตามเซลล์ที่สั่งเดิน</div>
+</div>
+
+<script src="../../vendor/three.min.js"></script>
+<script src="../../vendor/OrbitControls.js"></script>
+<script src="main.js"></script>
+
+</body></html>
