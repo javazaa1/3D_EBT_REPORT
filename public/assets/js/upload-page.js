@@ -115,7 +115,12 @@ $('#go').addEventListener('click', async () => {
   const author = $('#author').value.trim();
   ls.set(LS_AUTHOR, author);
   // new pages: make a readable, unique key from the name
-  items.forEach(it => { if (!it.target && !it.dup) it.key = newKey(R, it.meta.unit, it.page.is3d); });
+  items.forEach(it => {
+    if (it.target || it.dup) return;
+    // keep the page code from a multi-page file when it is free, otherwise make one from the name
+    it.key = it.shellKey && /^[a-z0-9][a-z0-9-]{0,39}$/.test(it.shellKey) && !R.byKey[it.shellKey]
+      ? it.shellKey : newKey(R, it.meta.unit, it.page.is3d);
+  });
   show('s-send');
   try {
     const done = await send(items, {

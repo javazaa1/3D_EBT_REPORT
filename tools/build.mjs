@@ -41,7 +41,7 @@ for (const job of jobs) {
   const html = fs.readFileSync(path.join(UP, job.file), 'utf8');
   const note = path.basename(job.file).replace(/\.html?$/i, '');
   const parts = await convertUpload(html);
-  for (const { key: shellKey, page } of parts) {
+  for (const { key: shellKey, page, meta: shellMeta } of parts) {
     const key = parts.length > 1 ? shellKey : (job.folderKey || shellKey || slug(note));
     if (!key) { console.warn(`  skip ${job.file}: cannot work out a page key`); continue; }
     if (seen.has(key + '@' + page.vid)) continue;
@@ -50,7 +50,7 @@ for (const job of jobs) {
     for (const f of page.files) write(path.join(dir, f.path), f.bytes);
     for (const l of page.libs) { const p = path.join(PUB, l.path); if (!fs.existsSync(p)) { write(p, l.bytes); libCount++; } }
     write(path.join(PUB, 'src', key, page.vid + '.html'), page.source);
-    versions.push({ key, vid: page.vid, title: page.title, is3d: page.is3d, note, file: job.file });
+    versions.push({ key, vid: page.vid, title: page.title, is3d: page.is3d, note, file: job.file, shellMeta });
     console.log(`  ${key.padEnd(14)} ${page.vid}  ${page.is3d ? (page.hooked ? '3D+pins' : '3D (no hook!)') : 'page   '}  ${job.file}`);
   }
 }
@@ -59,8 +59,9 @@ const pages = {};
 for (const v of versions) {
   pages[v.key] ??= Object.assign(
     { site: 'อื่นๆ', unit: v.title || v.key, desc: '', label: v.is3d ? '3D model' : 'Page', sort: 1000 },
-    meta[v.key] || {},
+    v.shellMeta || {},        // names from the shell file's own sidebar
+    meta[v.key] || {},        // uploads/pages.json wins
   );
 }
-write(path.join(PUB, 'p', 'manifest.json'), JSON.stringify({ pages, versions }, null, 1));
+write(path.join(PUB, 'p', 'manifest.json'), JSON.stringify({ pages, versions: versions.map(({ shellMeta, ...v }) => v) }, null, 1));
 console.log(`build: ${versions.length} version(s), ${Object.keys(pages).length} page(s), ${libCount} shared file(s)`);

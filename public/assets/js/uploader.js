@@ -49,15 +49,16 @@ export function newKey(R, unit, is3d) {
 /** Read one HTML file → [{ page, fileName, target, dup, key, meta }] */
 export async function prepare(file, R, fixedTarget) {
   const parts = await convertUpload(await file.text());
-  return parts.map(({ key, page }) => {
+  return parts.map(({ key, page, meta: shellMeta }) => {
     const target = (fixedTarget && parts.length === 1 && fixedTarget) ||
       (key && R.byKey[key] ? key : (!key ? matchPage(page, R) : ''));
     const unit = (page.title || file.name.replace(/\.html?$/i, '')).replace(/\s*[—–-]\s*(3D|Design Review).*$/i, '').trim();
     return {
-      page, fileName: file.name, target,
+      page, fileName: file.name, target, shellKey: key || null,
       dup: target ? R.findVer(target, page.vid) : null,
       key: target || key || newKey(R, unit, page.is3d),
-      meta: { site: '', unit, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
+      meta: Object.assign({ site: '', unit, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
+        shellMeta ? Object.fromEntries(Object.entries(shellMeta).filter(([, v]) => v !== '' && v != null)) : {}),
     };
   });
 }

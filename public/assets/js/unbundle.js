@@ -46,13 +46,32 @@ export const EXT_MIME = {
 };
 const typeOf = p => EXT_MIME[(p.split('.').pop() || '').toLowerCase()] || 'application/octet-stream';
 
-/** Shell file with many pages → [{ key, html }] ; otherwise null */
+/** Shell file with many pages → [{ key, html, meta }] ; otherwise null.
+    meta (site / unit / desc / label) is read from the shell's own sidebar when it has one. */
 export function splitShell(html) {
   const out = [];
   for (const m of html.matchAll(/<script type="text\/plain" id="d-([\w-]+)">([\s\S]*?)<\/script>/g)) {
-    out.push({ key: m[1], html: td.decode(b64(m[2])) });
+    out.push({ key: m[1], html: td.decode(b64(m[2])), meta: null });
   }
-  return out.length ? out : null;
+  if (!out.length) return null;
+  const text = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+  const meta = {};
+  let sort = 10;
+  // each sidebar group: <div class="grp"><button class="nb" …><span class="p">site</span><b>unit</b><small>desc</small></button>
+  //                      <div class="sub"><button class="sb" data-k="key">label</button>…</div></div>
+  for (const g of html.split(/<div class="grp">/).slice(1)) {
+    const site = (g.match(/<span class="p">([\s\S]*?)<\/span>/) || [])[1];
+    const unit = (g.match(/<b>([\s\S]*?)<\/b>/) || [])[1];
+    const desc = (g.match(/<small>([\s\S]*?)<\/small>/) || [])[1];
+    const subs = [...g.matchAll(/<button class="sb[^"]*" data-k="([\w-]+)">([\s\S]*?)<\/button>/g)];
+    const nb = g.match(/<button class="nb" data-k="([\w-]+)"/);
+    const keys = subs.length ? subs.map(x => [x[1], text(x[2])]) : (nb ? [[nb[1], '']] : []);
+    for (const [k, label] of keys) {
+      meta[k] = { site: site ? text(site) : '', unit: unit ? text(unit) : '', desc: desc ? text(desc) : '', label, sort: sort++ };
+    }
+  }
+  out.forEach(o => { o.meta = meta[o.key] || null; });
+  return out;
 }
 
 /** Adds `window.__review = {...}` after the OrbitControls line so comments can pin to 3D points. */
@@ -167,7 +186,7 @@ export async function convertUpload(html) {
   const shell = splitShell(html);
   if (shell) {
     const out = [];
-    for (const s of shell) out.push({ key: s.key, page: await convertPage(s.html) });
+    for (const s of shell) out.push({ key: s.key, meta: s.meta, page: await convertPage(s.html) });
     return out;
   }
   return [{ key: null, page: await convertPage(html) }];

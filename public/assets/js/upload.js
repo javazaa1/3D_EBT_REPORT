@@ -44,14 +44,15 @@ async function readFile(file) {
     const parts = await convertUpload(html);
     const R = V.registry;
     const note = file.name.replace(/\.html?$/i, '');
-    items = parts.map(({ key, page }) => {
+    items = parts.map(({ key, page, meta: shellMeta }) => {
       const fixed = dlg.dataset.target && parts.length === 1 ? dlg.dataset.target : '';
       const target = fixed || (key && R.byKey[key] ? key : (!key ? guessTarget(page) : ''));
       const newKey = key || slug(page.title) || slug(note) || 'page';
       return {
         page, fileName: file.name, target,
         key: target || newKey,
-        meta: { site: '', unit: page.title || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
+        meta: Object.assign({ site: '', unit: page.title || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
+          shellMeta ? Object.fromEntries(Object.entries(shellMeta).filter(([, v]) => v !== '' && v != null)) : {}),
       };
     });
     $('#up-note').value = note;
