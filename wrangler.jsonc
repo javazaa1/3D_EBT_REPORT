@@ -1,21 +1,15 @@
-// Cloudflare Worker config (Workers & Pages → Create → Import a repository → runs `npx wrangler deploy`).
+// Cloudflare Worker config (Workers & Pages → Import a repository → runs `npx wrangler deploy`).
 // "name" must match the Worker name shown in the Cloudflare dashboard.
-// D1 / R2 have no IDs here on purpose: wrangler creates them on the first deploy
-// (or connects to existing ones with the same name).
+// D1 / R2 have no IDs on purpose: wrangler creates them on the first deploy (or reuses ones with the same name).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bms-3d-review",
   "main": "src/worker.js",
   "compatibility_date": "2025-09-01",
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS"
-  },
-  "d1_databases": [
-    { "binding": "DB", "database_name": "bms-review" }
-  ],
-  "r2_buckets": [
-    { "binding": "IMAGES", "bucket_name": "bms-review-images" }
-  ],
+  // converts uploads/*.html → public/p, public/lib, public/src before every deploy
+  "build": { "command": "node tools/build.mjs", "watch_dir": ["uploads", "tools"] },
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [ { "binding": "DB", "database_name": "bms-review" } ],
+  "r2_buckets": [ { "binding": "IMAGES", "bucket_name": "bms-review-images" } ],
   "observability": { "enabled": true }
 }

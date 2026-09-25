@@ -10,39 +10,36 @@
 
 <!-- ───────── Left: page navigation ───────── -->
 <aside id="nav">
-  <div class="hd"><h1>BMS 3D — Design Review</h1><span>Draft for approval · 24 Sept 2026</span></div>
-
-  <div class="grp">
-    <button class="nb" data-k="ct5-3d"><span class="p">Silom Complex</span><b>CT-5 Cooling Tower</b><small>Fill media, internal spray, in-pipe flow</small></button>
-    <div class="sub"><button class="sb" data-k="ct5-sheet">Review sheet</button><button class="sb" data-k="ct5-3d">3D model</button></div>
+  <div class="hd"><h1>BMS 3D — Design Review</h1><span id="nav-sub">Draft for approval</span></div>
+  <div id="nav-list"></div>
+  <div class="ft">
+    <button id="up-btn" class="btn sm up" type="button" hidden>⬆ อัพโหลด HTML</button>
+    <div>3D: drag to rotate, scroll to zoom.<br>Best in Chrome or Edge.</div>
   </div>
-
-  <div class="grp">
-    <button class="nb" data-k="ch-3d"><span class="p">Silom Complex</span><b>Chiller-05 RTHD v3</b><small>Screw rotor, boiling shell, stop state</small></button>
-    <div class="sub"><button class="sb" data-k="ch-sheet">Review sheet</button><button class="sb" data-k="ch-3d">3D model</button></div>
-  </div>
-
-  <div class="grp">
-    <button class="nb" data-k="fcu-3d"><span class="p">Rosewood Bangkok</span><b>FCU B6F-01</b><small>Ducted fan coil, 40VDS type</small></button>
-    <div class="sub"><button class="sb" data-k="fcu-3d">3D model</button></div>
-  </div>
-
-  <div class="grp">
-    <button class="nb" data-k="oau-3d"><span class="p">Rosewood Bangkok</span><b>OAU 19OAU-01</b><small>Outdoor air unit, belt-drive fan, CHW coil</small></button>
-    <div class="sub"><button class="sb" data-k="oau-3d">3D model</button></div>
-  </div>
-
-  <div class="ft">3D: drag to rotate, scroll to zoom.<br>Best in Chrome or Edge.</div>
 </aside>
 
 <!-- ───────── Centre: viewer + pin overlay ───────── -->
 <main id="viewer">
-  <div id="ld">Loading…</div>
-  <iframe id="fr" title="Viewer"></iframe>
-  <div id="ov" aria-hidden="true"></div>          <!-- catches clicks while pinning -->
-  <div id="pins"></div>                           <!-- numbered pins drawn over the viewer -->
-  <div id="pinhint" hidden>คลิกตรงจุดที่ต้องการคอมเมนต์ · <kbd>Esc</kbd> ยกเลิก</div>
-  <button id="cm-toggle" class="fab" type="button" title="ความคิดเห็น">💬 <span id="cm-badge">0</span></button>
+  <div id="bar">
+    <div class="bar-t"><b id="bar-unit"></b><span id="bar-label"></span></div>
+    <label class="ver"><span>เวอร์ชัน</span><select id="ver"></select></label>
+    <span id="ver-old" class="chip warn" hidden></span>
+    <span id="ver-meta" class="ver-meta"></span>
+    <span class="bar-act">
+      <button id="ver-up" class="icon" type="button" title="อัพโหลดเวอร์ชันใหม่ของหน้านี้" hidden>⬆</button>
+      <a id="ver-src" class="icon" title="ดาวน์โหลดไฟล์ HTML ต้นฉบับของเวอร์ชันนี้">⬇</a>
+      <a id="ver-open" class="icon" target="_blank" rel="noopener" title="เปิดในแท็บใหม่">↗</a>
+      <button id="ver-del" class="icon del" type="button" title="ลบเวอร์ชันนี้" hidden>🗑</button>
+    </span>
+  </div>
+  <div id="stage">
+    <div id="ld">Loading…</div>
+    <iframe id="fr" title="Viewer"></iframe>
+    <div id="ov" aria-hidden="true"></div>          <!-- catches clicks while pinning -->
+    <div id="pins"></div>                           <!-- numbered pins drawn over the viewer -->
+    <div id="pinhint" hidden>คลิกตรงจุดที่ต้องการคอมเมนต์ · <kbd>Esc</kbd> ยกเลิก</div>
+    <button id="cm-toggle" class="fab" type="button" title="ความคิดเห็น">💬 <span id="cm-badge">0</span></button>
+  </div>
 </main>
 
 <!-- ───────── Right: comments ───────── -->
@@ -54,7 +51,7 @@
       <button id="new-btn" class="btn" type="button" title="คอมเมนต์ทั้งหน้า ไม่ระบุจุด">＋ ทั่วไป</button>
     </div>
     <div class="cm-filters">
-      <div class="seg" id="f-scope"><button data-v="page" class="on">หน้านี้</button><button data-v="all">ทุกหน้า</button></div>
+      <div class="seg" id="f-scope"><button data-v="ver">เวอร์ชันนี้</button><button data-v="page" class="on">หน้านี้</button><button data-v="all">ทุกหน้า</button></div>
       <div class="seg" id="f-status"><button data-v="open" class="on">เปิดอยู่</button><button data-v="done">แก้แล้ว</button><button data-v="all">ทั้งหมด</button></div>
     </div>
   </header>
@@ -95,8 +92,35 @@
 <!-- Image lightbox -->
 <div id="lb" hidden><img alt=""><button type="button" aria-label="ปิด">✕</button></div>
 
-<script src="assets/js/app.js"></script>
+<!-- Upload dialog -->
+<dialog id="up">
+  <form method="dialog" id="up-form">
+    <header class="up-hd"><h2>อัพโหลด HTML</h2><button type="button" class="x" id="up-x" aria-label="ปิด">✕</button></header>
+    <div class="drop big" id="up-drop">
+      <input type="file" id="up-file" accept=".html,.htm,text/html" hidden>
+      <b>ลากไฟล์ .html มาวางที่นี่</b>
+      <span>ไฟล์แบบรวมไฟล์เดียว (standalone) หรือ HTML ปกติ · ระบบจะแยกไฟล์และขึ้นเวอร์ชันให้</span>
+      <button type="button" class="btn sm" id="up-pick">เลือกไฟล์</button>
+    </div>
+    <div id="up-items"></div>
+    <div id="up-common" hidden>
+      <div class="f-row">
+        <label>หมายเหตุเวอร์ชัน<input id="up-note" maxlength="300" placeholder="เช่น แก้สีท่อ CHWS ตามคอมเมนต์ #3"></label>
+        <label>ผู้อัพโหลด<input id="up-author" maxlength="80"></label>
+      </div>
+    </div>
+    <p class="f-err" id="up-err" hidden></p>
+    <div class="up-prog" id="up-prog" hidden><i></i><span></span></div>
+    <footer class="f-btns">
+      <button type="button" class="btn" id="up-cancel">ยกเลิก</button>
+      <button type="button" class="btn pri" id="up-go" disabled>อัพโหลด</button>
+    </footer>
+  </form>
+</dialog>
+
 <script src="assets/js/api.js"></script>
+<script src="assets/js/app.js"></script>
 <script src="assets/js/comments.js"></script>
+<script type="module" src="assets/js/upload.js"></script>
 </body>
 </html>

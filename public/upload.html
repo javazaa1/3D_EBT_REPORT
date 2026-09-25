@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>อัพโหลดงาน — BMS 3D Review</title>
+<style>
+:root{--bg:#f1efe8;--panel:#f7f5ef;--card:#fff;--ink:#304038;--ink2:#5a6a60;--line:#dcd8cc;--gold:#a08850;--ok:#3f7a57;--warn:#b5543a}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{font-family:Arial,Helvetica,"Sarabun","Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink);display:flex;justify-content:center;padding:40px 16px}
+main{width:100%;max-width:620px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--gold);padding-bottom:12px}
+header h1{font-size:24px}
+header a{font-size:13px;color:var(--ink2)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.drop{border:2.5px dashed #c9bfa3;border-radius:16px;background:var(--panel);text-align:center;padding:56px 20px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:12px}
+.drop:hover,.drop.over{border-color:var(--gold);background:#f7f1e1}
+.drop .ic{font-size:44px;line-height:1}
+.drop b{font-size:20px}
+.drop span{color:var(--ink2);font-size:14px}
+.btn{font:700 16px Arial,sans-serif;padding:14px 22px;border-radius:999px;border:0;background:var(--ink);color:#fff;cursor:pointer}
+.btn:hover{background:var(--gold)}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.big{width:100%;font-size:18px;padding:16px}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:var(--ink2)}
+input,select{font:16px Arial,sans-serif;color:var(--ink);padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;width:100%}
+input:focus,select:focus{outline:2px solid rgba(160,136,80,.45);border-color:var(--gold)}
+.item{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.item .ic{font-size:28px;line-height:1}
+.item .tx{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.item .t{font-size:17px;font-weight:700}
+.item .s{font-size:13.5px;color:var(--ink2)}
+.item .v{display:inline-block;background:var(--ink);color:#fff;border-radius:6px;padding:1px 8px;font-weight:700;font-size:13px}
+.item.dup{opacity:.6}
+.item.new{border-color:var(--gold);background:#fffdf7}
+.change{border:0;background:none;color:var(--gold);font-size:13px;text-decoration:underline;cursor:pointer;padding:0;align-self:flex-start}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.list{display:flex;flex-direction:column;gap:10px}
+.msg{font-size:14px;padding:12px 14px;border-radius:10px;line-height:1.5}
+.msg.err{background:#f7e3d6;color:var(--warn)}
+.msg.ok{background:#e3efe6;color:var(--ok)}
+.bar{height:14px;border-radius:999px;background:#e6e1d4;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
+.center{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center}
+.done a{color:var(--ink);font-weight:700}
+.hint{font-size:12.5px;color:var(--ink2);text-align:center}
+.spin{width:36px;height:36px;border:4px solid #e6e1d4;border-top-color:var(--gold);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (max-width:560px){.row{grid-template-columns:1fr}body{padding:20px 12px}.drop{padding:40px 14px}}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>อัพโหลดงาน</h1><a href="/">ไปหน้ารีวิว →</a></header>
+
+  <!-- 0: need the upload code -->
+  <section id="s-key" class="card center" hidden>
+    <div style="font-size:40px">🔑</div>
+    <b style="font-size:18px">ใส่รหัสอัพโหลด</b>
+    <p class="hint">ขอรหัสหรือลิงก์จากผู้ดูแลระบบ · ใส่ครั้งเดียว เครื่องนี้จะจำไว้</p>
+    <input id="key-in" type="password" autocomplete="off" style="max-width:320px;text-align:center">
+    <button class="btn" id="key-go">ตกลง</button>
+    <p class="msg err" id="key-err" hidden></p>
+  </section>
+
+  <!-- 1: drop -->
+  <section id="s-drop" hidden>
+    <div class="drop" id="drop" tabindex="0" role="button">
+      <div class="ic">📄</div>
+      <b>ลากไฟล์ .html มาวางตรงนี้</b>
+      <span>หรือคลิกเพื่อเลือกไฟล์ · เลือกหลายไฟล์พร้อมกันได้</span>
+    </div>
+    <input type="file" id="file" accept=".html,.htm,text/html" multiple hidden>
+  </section>
+
+  <!-- 2: reading -->
+  <section id="s-read" class="card center" hidden><div class="spin"></div><b>กำลังอ่านไฟล์…</b></section>
+
+  <!-- 3: confirm -->
+  <section id="s-check" hidden>
+    <div class="card" style="display:flex;flex-direction:column;gap:16px">
+      <div class="list" id="items"></div>
+      <label>มีอะไรเปลี่ยนบ้าง? <span style="font-weight:400">(ไม่ต้องใส่ก็ได้)</span><input id="note" maxlength="300" placeholder="เช่น แก้สีท่อตามคอมเมนต์"></label>
+      <label>ชื่อคุณ<input id="author" maxlength="80" placeholder="ชื่อเล่นก็ได้"></label>
+      <p class="msg err" id="err" hidden></p>
+      <button class="btn big" id="go">อัพโหลด</button>
+      <button class="btn ghost" id="again">เลือกไฟล์ใหม่</button>
+    </div>
+  </section>
+
+  <!-- 4: sending -->
+  <section id="s-send" class="card center" hidden>
+    <b style="font-size:18px">กำลังอัพโหลด… อย่าเพิ่งปิดหน้านี้</b>
+    <div class="bar" style="width:100%"><i id="bar"></i></div>
+    <span class="hint" id="bar-t"></span>
+  </section>
+
+  <!-- 5: done -->
+  <section id="s-done" class="card center done" hidden>
+    <div style="font-size:48px">✅</div>
+    <b style="font-size:20px">อัพโหลดเรียบร้อย</b>
+    <div class="list" id="done-list" style="width:100%"></div>
+    <button class="btn" id="next">อัพไฟล์ถัดไป</button>
+  </section>
+
+  <p class="hint">ใช้ไฟล์ HTML ที่ export มา (ไฟล์เดียว) ได้เลย · ระบบแยกไฟล์และขึ้นเวอร์ชันให้เอง</p>
+</main>
+
+<script src="assets/js/api.js"></script>
+<script type="module" src="assets/js/upload-page.js"></script>
+</body>
+</html>

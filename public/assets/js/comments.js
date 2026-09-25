@@ -43,6 +43,16 @@
     document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
   }
   const isDone = c => c.status === 'done';
+  /** version a comment belongs to (comments from before versioning → first version) */
+  const vidOf = c => c.vid || V.firstVid(c.page);
+  const onThisVersion = c => c.page === V.key && vidOf(c) === V.vid;
+  const verChip = c => {
+    const vs = V.registry.versions[c.page] || [];
+    if (vs.length < 2) return '';
+    const n = V.versionNo(c.page, vidOf(c));
+    const cur = c.page === V.key && vidOf(c) === V.vid;
+    return '<span class="vchip' + (cur ? '' : ' old') + '" title="' + (cur ? 'คอมเมนต์บนเวอร์ชันที่เปิดอยู่' : 'คอมเมนต์บนเวอร์ชันอื่น — คลิกเพื่อเปิดเวอร์ชันนั้น') + '">' + (n ? 'v' + n : 'ลบแล้ว') + '</span>';
+  };
   const topLevel = () => S.all.filter(c => !c.parent_id);
   const repliesOf = id => S.all.filter(c => c.parent_id === id).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
 
@@ -213,7 +223,7 @@
     try { el.form.author.value = localStorage.getItem(LS_AUTHOR) || ''; } catch (e) { /* ignore */ }
     el.form.review_date.value = today();
     el.form.part.value = draft.part || '';
-    const title = V.titles[V.key] || V.key;
+    const title = V.pageTitle(V.key) + ' · v' + (V.versionNo(V.key, V.vid) || '');
     const kind = !draft.anchor ? 'คอมเมนต์ทั่วไป (ทั้งหน้า)'
       : draft.anchor.type === 'world' ? 'หมุดบนโมเดล 3D'
       : draft.anchor.type === 'canvas' ? 'หมุดในมุมมอง 3D (ไม่โดนชิ้นส่วน)'
@@ -289,7 +299,7 @@
     S.busy = true; el.submit.disabled = true; el.submit.textContent = 'กำลังส่ง…'; el.err.hidden = true;
     try {
       const c = await API.create({
-        page: V.key, author, body, part: f.part.value.trim(), review_date: f.review_date.value,
+        page: V.key, vid: V.vid, author, body, part: f.part.value.trim(), review_date: f.review_date.value,
         anchor: S.draft.anchor, view: S.draft.view,
       }, files);
       S.all.push(c);
@@ -314,7 +324,7 @@
 
   function visibleList() {
     return topLevel()
-      .filter(c => S.scope === 'all' || c.page === V.key)
+      .filter(c => S.scope === 'all' || (S.scope === 'ver' ? onThisVersion(c) : c.page === V.key))
       .filter(c => S.status === 'all' || (S.status === 'done' ? isDone(c) : !isDone(c)))
       .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   }
@@ -329,8 +339,8 @@
     const reps = repliesOf(c.id);
     return '<article class="cc' + (isDone(c) ? ' done' : '') + (c.id === S.activeId ? ' active' : '') + '" data-id="' + esc(c.id) + '">' +
       '<div class="cc-top"><span class="no' + (c.anchor ? '' : ' gen') + '">' + (c.anchor ? esc(c.no || '•') : '≡') + '</span>' +
-      '<b>' + esc(c.author) + '</b><time title="ส่งเมื่อ ' + esc(fmtStamp(c.created_at)) + '">' + esc(fmtDate(c.review_date || c.created_at)) + '</time></div>' +
-      (S.scope === 'all' ? '<div class="cc-pg">' + esc(V.titles[c.page] || c.page) + '</div>' : '') +
+      '<b>' + esc(c.author) + '</b>' + verChip(c) + '<time title="ส่งเมื่อ ' + esc(fmtStamp(c.created_at)) + '">' + esc(fmtDate(c.review_date || c.created_at)) + '</time></div>' +
+      (S.scope === 'all' ? '<div class="cc-pg">' + esc(V.pageTitle(c.page)) + '</div>' : '') +
       (c.part ? '<div class="cc-part">ส่วน: ' + esc(c.part) + '</div>' : '') +
       '<div class="cc-body">' + esc(c.body) + '</div>' + imgsHTML(c) +
       (reps.length ? '<div class="replies">' + reps.map(r =>
@@ -369,7 +379,7 @@
     if (a === 'view') focusComment(c);
     else if (a === 'reply') openReply(card, c);
     else if (a === 'link') {
-      const url = location.href.split('#')[0] + '#' + c.page + '/c=' + c.id;
+      const url = location.href.split('#')[0] + '#' + c.page + '@' + vidOf(c) + '/c=' + c.id;
       try { await navigator.clipboard.writeText(url); toast('คัดลอกลิงก์แล้ว'); } catch (err) { prompt('คัดลอกลิงก์นี้', url); }
     } else if (a === 'status') {
       const status = isDone(c) ? 'open' : 'done';
@@ -407,14 +417,14 @@
   }
 
   async function focusComment(c) {
-    S.activeId = c.id;
-    if (c.page !== V.key) { await V.ready(c.page); }
+    if (c.page !== V.key || vidOf(c) !== V.vid) { if (V.findVer(c.page, vidOf(c)) || c.page !== V.key) await V.load(c.page, vidOf(c)); }
+    S.activeId = c.id;   // after switching: a page/version change clears the highlight
     if (c.view && V.r3d) goToView(V.r3d, c.view);
     if (c.anchor && c.anchor.type === 'doc' && V.doc) {
       const se = V.doc.scrollingElement || V.doc.documentElement;
       se.scrollTo({ top: Math.max(0, c.anchor.y * se.scrollHeight - V.frame.clientHeight / 2), behavior: 'smooth' });
     }
-    history.replaceState(null, '', '#' + c.page + '/c=' + c.id);
+    history.replaceState(null, '', '#' + c.page + '@' + V.vid + '/c=' + c.id);
     render();
     const card = $('.cc[data-id="' + c.id + '"]', el.list);
     if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -424,7 +434,7 @@
   /* ════════ pins overlay ════════ */
   let pinNodes = new Map();
   function renderPins() {
-    const want = topLevel().filter(c => c.page === V.key && c.anchor && (S.status === 'all' || (S.status === 'done' ? isDone(c) : !isDone(c))));
+    const want = topLevel().filter(c => onThisVersion(c) && c.anchor && (S.status === 'all' || (S.status === 'done' ? isDone(c) : !isDone(c))));
     const keep = new Set();
     want.forEach(c => {
       keep.add(c.id);
@@ -475,6 +485,7 @@
   const closeBtn = $('#cm-close'); if (closeBtn) closeBtn.addEventListener('click', () => el.body.classList.remove('cm-open'));
 
   document.addEventListener('viewer:change', () => { setPinning(false); closeForm(); S.activeId = null; render(); });
+  document.addEventListener('registry:change', () => render());
   document.addEventListener('viewer:load', () => {
     // Esc inside the iframe should also cancel pin mode
     try { V.win.addEventListener('keydown', e => { if (e.key === 'Escape') setPinning(false); }); } catch (e) { /* ignore */ }
@@ -487,6 +498,7 @@
 
   (async function init() {
     const mode = await API.init();
+    await V.whenReady();
     el.mode.textContent = mode === 'remote' ? 'ออนไลน์' : 'โหมดทดลอง (เก็บในเครื่องนี้)';
     el.mode.className = 'mode ' + mode;
     el.mode.title = mode === 'remote' ? 'บันทึกใน Cloudflare D1 + R2 — ทุกคนเห็นเหมือนกัน' : 'ไม่พบ /api — คอมเมนต์เก็บใน browser นี้เท่านั้น';
@@ -497,6 +509,6 @@
       if (c) { setSeg('status', 'all'); el.body.classList.add('cm-open'); focusComment(c); }
     }
     // keep everyone's view in sync
-    if (mode === 'remote') setInterval(() => { if (!document.hidden && el.form.hidden && !$('.rp-form')) refresh(); }, 30000);
+    if (mode === 'remote') setInterval(() => { if (!document.hidden && el.form.hidden && !$('.rp-form')) { refresh(); V.reload().catch(() => {}); } }, 30000);
   })();
 })();

@@ -1,110 +1,114 @@
-# BMS 3D — Design Review (Cloudflare Pages)
+# BMS 3D — Design Review
 
-แยกไฟล์ `index.html` เดิม (ไฟล์เดียว 4.9 MB ที่ฝัง base64 ทุกหน้า) เป็น HTML / CSS / JS แยกกัน
-และเพิ่มระบบ **คอมเมนต์แบบปักหมุด** ที่แนบรูป ใส่ข้อความ และลงวันที่ได้
-เก็บข้อมูลใน **Cloudflare D1** (ข้อความ) + **R2** (รูป)
+เว็บรีวิวงาน 3D / review sheet บน Cloudflare Worker
+- **อัพไฟล์ HTML แบบรวมไฟล์เดียว (standalone) ได้เลย** ระบบแยกเป็น HTML / CSS / JS / รูป ให้เอง
+- **ทุกการอัพขึ้นเวอร์ชันใหม่** (v1, v2, …) เลือกดูย้อนหลังได้ ดาวน์โหลดไฟล์ต้นฉบับแต่ละเวอร์ชันได้
+- **คอมเมนต์แบบปักหมุด** แนบรูป ใส่วันที่ ผูกกับเวอร์ชันที่คอมเมนต์
+
+## อัพไฟล์ใหม่ — เลือกทางไหนก็ได้
+
+### ทาง 1: หน้าอัพโหลด `/upload` (สำหรับคนทั่วไป)
+**ผู้ดูแลทำครั้งเดียว:** ตั้ง Secret `UPLOAD_KEY` (ดู “ตั้งค่าครั้งแรก”) แล้วส่งลิงก์นี้ให้คนอัพ
+```
+https://<โดเมนของเว็บ>/upload#k=<UPLOAD_KEY>
+```
+เปิดลิงก์ครั้งแรก browser จะจำรหัสไว้และลบรหัสออกจากแถบ URL — ให้คนอัพกด bookmark หน้า `/upload` ไว้ได้เลย
+
+**คนอัพ:**
+1. เปิด bookmark หน้า **อัพโหลดงาน**
+2. ลากไฟล์ .html มาวาง (หลายไฟล์พร้อมกันได้)
+3. ระบบบอกว่า “✅ FCU B6F-01 · 3D model → จะขึ้นเป็น v3” → กด **อัพโหลด** → เสร็จ
+
+- ไฟล์ที่อัพไปแล้วจะขึ้น ⏭ และข้ามให้เอง
+- ถ้าเป็นงานใหม่ที่ไม่ตรงกับหน้าไหน จะขึ้น 🆕 ให้ใส่แค่ชื่ออุปกรณ์กับไซต์
+- ถ้าระบบเดาหน้าผิด กด “ไม่ใช่หน้านี้?” แล้วเลือกเอง
+- ผู้ดูแลยังใช้ปุ่ม **⬆ อัพโหลด HTML** ในหน้ารีวิวได้เหมือนเดิม (มีตัวเลือกละเอียดกว่า)
+
+### ทาง 2: ผ่าน Git
+วางไฟล์ในโฟลเดอร์ `uploads/` แล้ว push (อัพผ่านหน้าเว็บ GitHub → Add file → Upload files ก็ได้)
+
+```
+uploads/
+├─ ct5-3d/
+│  └─ 2026-09-30 ปรับสีท่อ CDW.html     ← เวอร์ชันใหม่ของหน้า ct5-3d  (ชื่อไฟล์ = หมายเหตุเวอร์ชัน)
+├─ ahu07-3d/
+│  └─ first draft.html                  ← โฟลเดอร์ใหม่ = หน้าใหม่ (ชื่อโฟลเดอร์ = รหัสหน้าใน URL)
+├─ 2026-09-24 Draft for approval.html   ← ไฟล์ shell ที่รวมหลายหน้า: แยกทุกหน้าให้
+└─ pages.json                           ← (ไม่บังคับ) ชื่อไซต์ / อุปกรณ์ / คำอธิบาย ในเมนูซ้าย
+```
+
+ตอน deploy ระบบรัน `tools/build.mjs` อัตโนมัติ (ตั้งไว้ใน `wrangler.jsonc` → `build.command`)
+ไฟล์ที่ได้ไปอยู่ใน `public/p/`, `public/lib/`, `public/src/` — สร้างใหม่ทุกครั้ง ไม่ต้อง commit
+
+`pages.json` ตัวอย่าง (ถ้าไม่ใส่ ระบบใช้ `<title>` ของไฟล์เป็นชื่อ):
+```json
+{ "ahu07-3d": { "site": "Rosewood Bangkok", "unit": "AHU-07", "desc": "Level 12", "label": "3D model", "sort": 50 } }
+```
+
+### ทั้งสองทางใช้ตัวแยกไฟล์เดียวกัน (`public/assets/js/unbundle.js`)
+- หน้า 3D: ใส่ `window.__review` ให้อัตโนมัติ (หมุดติดโมเดล, บันทึกมุมกล้อง, ภาพ snapshot)
+  ถ้าหาจุดใส่ไม่เจอจะเตือน “หมุดจะไม่ติดโมเดล” — คอมเมนต์ยังใช้ได้แต่หมุดเป็นตำแหน่งบนจอ
+- three.js / controls / ฟอนต์ เก็บครั้งเดียวที่ `/lib/<hash>` ใช้ร่วมทุกหน้าทุกเวอร์ชัน
+- ไฟล์เดิมซ้ำ (เนื้อหาเหมือนเวอร์ชันที่มีแล้ว) จะถูกข้าม
+- รองรับทั้งไฟล์ “Unpacking…” แบบรวมไฟล์ และ HTML ปกติ
+
+## เวอร์ชัน
+- แถบบนสุดของหน้า: เลือกเวอร์ชัน · ⬆ อัพเวอร์ชันใหม่ · ⬇ ดาวน์โหลด HTML ต้นฉบับ · ↗ เปิดแท็บใหม่ · 🗑 ลบ (เฉพาะที่อัพผ่านเว็บ)
+- เปิดเวอร์ชันเก่าจะมีป้าย “เวอร์ชันเก่า · ดู vN”
+- เมนูซ้ายแสดงเลขเวอร์ชันล่าสุด และจุดสีทองถ้ามีเวอร์ชันใหม่ใน 3 วัน
+- คอมเมนต์มีป้าย v1 / v2 · หมุดแสดงเฉพาะบนเวอร์ชันที่คอมเมนต์ · คลิกคอมเมนต์ของเวอร์ชันอื่นจะสลับไปเวอร์ชันนั้นให้
+- ตัวกรองคอมเมนต์: **เวอร์ชันนี้ / หน้านี้ (ทุกเวอร์ชัน) / ทุกหน้า**
+- ลิงก์ตรง: `…/#ct5-3d` (ล่าสุด) · `…/#ct5-3d@<vid>` (เวอร์ชันนั้น) · `…/#ct5-3d@<vid>/c=<id>` (คอมเมนต์)
+- ลบเวอร์ชันจาก Git: ลบไฟล์ใน `uploads/` แล้ว push
+
+## ตั้งค่าครั้งแรก (Cloudflare Worker + GitHub)
+
+1. push โฟลเดอร์นี้ขึ้น GitHub (`wrangler.jsonc`, `package.json`, `public/`, `src/`, `tools/`, `uploads/` อยู่ชั้นบนสุด)
+2. Workers & Pages → Create → Import a repository → เลือก repo
+   Build command: *(ว่าง)* · Deploy command: `npx wrangler deploy`
+3. ชื่อ Worker ต้องตรงกับ `"name"` ใน `wrangler.jsonc`
+4. เปิดใช้ R2 ในบัญชี (ครั้งเดียว) — D1 `bms-review` และ R2 `bms-review-images` ถูกสร้างตอน deploy แรก,
+   ตารางถูกสร้าง/อัพเกรดเองตอนเรียก API ครั้งแรก
+5. **เปิดอัพโหลดผ่านเว็บ:** Worker → Settings → Variables and Secrets → Add → **Secret** ชื่อ `UPLOAD_KEY` (ตั้งรหัสเอง ใช้ตัวอักษร/ตัวเลขยาว ๆ)
+   แล้วส่งลิงก์ `/upload#k=<รหัส>` ให้คนอัพ · จะเปลี่ยนรหัสเมื่อไหร่ก็ได้ (ลิงก์เก่าจะใช้ไม่ได้ทันที)
+   ถ้าไม่ตั้ง ปุ่มอัพโหลดบนเว็บจะไม่แสดง (อัพผ่าน Git ได้ตามปกติ)
+
+## ความปลอดภัย
+- อัพโหลด = วาง HTML/JS บนโดเมนนี้ จึงต้องมี `UPLOAD_KEY` (หรือ login ผ่าน Cloudflare Access) — ให้เฉพาะทีม
+- คอมเมนต์: ใครมีลิงก์ก็คอมเมนต์ได้ ถ้าจะจำกัดให้ตั้ง Secret `REVIEW_KEY` หรือใช้ **Cloudflare Access**
+  (Zero Trust → Access → Applications, login ด้วย email ฟรี 50 คน — ระบบใช้ email เป็นชื่อผู้คอมเมนต์ให้)
 
 ## โครงสร้างไฟล์
-
 ```
-bms-3d-review/
-├─ public/                      ← เว็บ static (Cloudflare Pages เสิร์ฟโฟลเดอร์นี้)
-│  ├─ index.html                ← หน้าหลัก: เมนูซ้าย + viewer + แผงคอมเมนต์
-│  ├─ assets/css/app.css
-│  ├─ assets/js/app.js          ← สลับหน้า / โหลด iframe / deep link (#ct5-3d/c=<id>)
-│  ├─ assets/js/api.js          ← ติดต่อ /api (มีโหมดทดลองเก็บใน browser ถ้าไม่มี backend)
-│  ├─ assets/js/comments.js     ← ปักหมุด, ฟอร์ม, รายการคอมเมนต์, ภาพมุมมอง 3D
-│  ├─ vendor/                   ← three.min.js, OrbitControls.js, doc-page.js (ใช้ร่วมกันทุกหน้า)
-│  ├─ fonts/                    ← woff2 ที่เคยฝังในไฟล์
-│  ├─ pages/
-│  │  ├─ ct5-sheet/  index.html · style.css · img/*.png
-│  │  ├─ ct5-3d/     index.html · style.css · fonts.css · main.js
-│  │  ├─ ch-sheet/   …
-│  │  ├─ ch-3d/      …
-│  │  ├─ fcu-3d/     …
-│  │  └─ oau-3d/     …
-│  └─ _headers                  ← cache: vendor/fonts เก็บนาน, pages 5 นาที
-├─ functions/api/               ← backend (/api)
-│  ├─ _middleware.js            ← ตรวจ REVIEW_KEY (ถ้าตั้ง), จัดการ error
-│  ├─ comments/index.js         ← GET รายการ / POST คอมเมนต์ใหม่ (multipart + รูป)
-│  ├─ comments/[id].js          ← PATCH สถานะ (open/done) / DELETE
-│  └─ img/[[path]].js           ← ส่งรูปจาก R2
-├─ lib/review.js                ← helper ที่ functions ใช้ร่วมกัน
-├─ src/worker.js               ← entry ของ Worker: ส่ง /api/* ไปที่ functions/, ที่เหลือเสิร์ฟจาก public/
-├─ wrangler.jsonc               ← config ของ Worker (assets + D1 + R2)
-└─ schema.sql                   ← โครงสร้างตาราง D1 (สร้างอัตโนมัติ)
+public/                 เว็บ (static)
+  index.html            หน้าหลัก: เมนู + แถบเวอร์ชัน + viewer + คอมเมนต์ + หน้าต่างอัพโหลด
+  assets/css/app.css
+  assets/js/api.js      ติดต่อ /api (มีโหมดทดลองเก็บใน browser ถ้าไม่มี backend)
+  assets/js/app.js      เมนูซ้าย, เวอร์ชัน, iframe, ลิงก์ตรง
+  assets/js/comments.js ปักหมุด, ฟอร์ม, รายการคอมเมนต์
+  upload.html           หน้าอัพโหลดแบบง่าย (/upload)
+  assets/js/upload.js   หน้าต่างอัพโหลดในหน้ารีวิว
+  assets/js/upload-page.js  ตัวหน้าอัพโหลดแบบง่าย
+  assets/js/uploader.js ส่วนอัพโหลดที่ใช้ร่วมกัน (จับคู่หน้า, ส่งไฟล์)
+  assets/js/unbundle.js ตัวแยกไฟล์ (ใช้ทั้งในเว็บและตอน build)
+src/                    Worker
+  worker.js             router: /api/*, /p /lib /src ที่อัพผ่านเว็บ (R2)
+  api/comments.js       คอมเมนต์
+  api/pages.js          หน้า / เวอร์ชัน / อัพโหลดไฟล์
+  api/img.js            รูปในคอมเมนต์
+  lib.js                helper + สร้างตาราง D1
+tools/build.mjs         แปลง uploads/ ตอน deploy
+uploads/                ไฟล์ HTML ต้นฉบับ (ทาง Git)
+schema.sql              โครงสร้างตาราง (อ้างอิง)
+wrangler.jsonc          config ของ Worker
 ```
 
-**เพิ่มหน้าใหม่:** สร้างโฟลเดอร์ `public/pages/<key>/index.html` แล้วเพิ่มปุ่ม
-`<button class="sb" data-k="<key>">` ในเมนูซ้ายของ `public/index.html` — เท่านี้ระบบคอมเมนต์ใช้ได้เลย
-ถ้าเป็นหน้า 3D ให้เพิ่มบรรทัดนี้ใน `main.js` หลังสร้าง OrbitControls (หน้าเดิมทั้ง 4 ใส่ไว้แล้ว):
-
-```js
-window.__review = { THREE, scene, camera, renderer, controls };
-```
-
-บรรทัดนี้ทำให้หมุดติดกับจุดบนโมเดลจริง (หมุนแล้วหมุดตามไป), บันทึกมุมกล้อง, และถ่ายภาพมุมมองแนบคอมเมนต์ได้
-
-## ระบบคอมเมนต์ทำอะไรได้
-
-| ฟีเจอร์ | รายละเอียด |
-|---|---|
-| 📍 ปักหมุด | กดปุ่มแล้วคลิกจุดที่ต้องการ — บนโมเดล 3D หมุดจะติดกับชิ้นส่วนนั้น (raycast) หมุน/ซูมแล้วหมุดตามไป, ถ้าถูกบังจะจางลง / บน review sheet หมุดอยู่กับตำแหน่งในเอกสาร |
-| ส่วน / อุปกรณ์ | กรอกเอง หรือระบบเติมให้จาก caption รูป (เช่น "3. Cutaway — internal water path") และจำชื่อที่เคยใช้ในหน้านั้นไว้เลือก |
-| รูป | แนบได้สูงสุด 6 รูป (เลือกไฟล์ / ลากวาง / Ctrl+V) รูปใหญ่ถูกย่อเหลือ ~2000px ก่อนอัพโหลด |
-| ภาพมุมมอง 3D | ตอนปักหมุดบน 3D จะถ่ายภาพหน้าจอพร้อมหมุดแนบให้อัตโนมัติ (ติ๊กออกได้) |
-| วันที่ | เลือกวันที่ได้ (ค่าเริ่มต้นวันนี้) + บันทึกเวลาส่งจริงไว้ด้วย (ชี้ที่วันที่เพื่อดู) |
-| 🎯 ไปที่มุมมอง | คลิกคอมเมนต์ → เปิดหน้านั้น หมุนกล้องกลับไปมุมที่คนคอมเมนต์เห็น |
-| สถานะ | ✓ แก้แล้ว / ↺ เปิดใหม่ · กรองได้ เปิดอยู่ / แก้แล้ว / ทั้งหมด · หน้านี้ / ทุกหน้า |
-| ตอบกลับ | ตอบเป็น thread ใต้คอมเมนต์ แนบรูปได้ |
-| 🔗 ลิงก์ | คัดลอกลิงก์ไปคอมเมนต์นั้นโดยตรง ส่งใน LINE ได้ |
-| ตัวเลขบนเมนู | ปุ่มแต่ละหน้าแสดงจำนวนคอมเมนต์ที่ยังเปิดอยู่ |
-| อัพเดทอัตโนมัติ | ดึงคอมเมนต์ใหม่ทุก 30 วินาที |
-
-## Deploy ผ่าน GitHub → Cloudflare Worker
-
-ใช้เมนู Workers & Pages → Create → **Import a repository** (Cloudflare จะรัน `npx wrangler deploy` ให้)
-
-1. push โฟลเดอร์นี้ขึ้น GitHub ให้ `wrangler.jsonc`, `package.json`, `public/`, `src/` อยู่ **ชั้นบนสุดของ repo**
-   (ถ้าอยู่ในโฟลเดอร์ย่อย ให้ตั้ง Settings → Build → Root directory เป็นชื่อโฟลเดอร์นั้น)
-2. Import repository แล้วตั้งค่า
-   - Build command: *(เว้นว่าง)*
-   - Deploy command: `npx wrangler deploy`
-3. ชื่อ Worker ใน dashboard ต้องตรงกับ `"name"` ใน `wrangler.jsonc` (ตอนนี้คือ `bms-3d-review`) — ถ้าไม่ตรง แก้ในไฟล์แล้ว push
-
-D1 (`bms-review`) และ R2 (`bms-review-images`) **ถูกสร้างอัตโนมัติตอน deploy ครั้งแรก**
-(ถ้าสร้างชื่อเดียวกันไว้แล้วจะเชื่อมกับของเดิม) และตาราง D1 ถูกสร้างตอนเรียก API ครั้งแรก
-ต้องเปิดใช้ R2 ในบัญชีก่อน (R2 Object Storage → เปิดใช้ครั้งแรก)
-
-หลังจากนี้ push ขึ้น `main` = deploy ใหม่อัตโนมัติ
-
-> ไฟล์ `functions/` ใช้ได้ทั้งสองแบบ: Worker เรียกผ่าน `src/worker.js`,
-> ส่วนถ้าเลือกสร้างเป็น **Pages** (Build output directory = `public`) Pages จะใช้ `functions/` โดยตรง
-> แล้วตั้ง Bindings `DB` / `IMAGES` เองใน Settings → Bindings
-
-### ทดสอบในเครื่อง (ไม่บังคับ)
-
+## ทดสอบในเครื่อง (ไม่บังคับ)
 ```bash
 npm install
-npm run dev      # http://localhost:8787 — จำลอง D1 + R2 ในเครื่อง
+echo "UPLOAD_KEY=test" > .dev.vars
+npm run dev          # http://localhost:8787 — build + จำลอง D1/R2
 ```
 
-ถ้าเปิดด้วย static server ธรรมดา (ไม่มี /api) แผงคอมเมนต์จะขึ้น **"โหมดทดลอง"** —
-คอมเมนต์เก็บใน browser เครื่องนั้นเท่านั้น ไว้ลอง UI
-
-## จำกัดคนที่คอมเมนต์ได้ (แนะนำ)
-
-ตอนนี้ใครมีลิงก์ก็คอมเมนต์ / ลบได้ เลือกอย่างใดอย่างหนึ่ง:
-
-1. **Cloudflare Access (แนะนำ)** — Zero Trust → Access → Applications → ใส่โดเมน Pages
-   ให้ login ด้วย email (ฟรี 50 คน) ระบบจะใช้ email ที่ login เป็นชื่อผู้คอมเมนต์อัตโนมัติ
-2. **รหัสร่วม** — Worker → Settings → Variables and Secrets → เพิ่ม **Secret** ชื่อ `REVIEW_KEY`
-   คนที่จะคอมเมนต์ต้องใส่รหัสครั้งแรก (browser จำไว้) ส่วนการดูอ่านได้ทุกคน
-
-## ข้อมูลที่บันทึก (ตาราง `comments`)
-
-`page` หน้าไหน · `no` เลขหมุด · `author` · `part` ส่วน/อุปกรณ์ · `body` ข้อความ ·
-`review_date` วันที่ · `anchor` ตำแหน่งหมุด (JSON) · `view` มุมกล้อง 3D (JSON) ·
-`images` key ของรูปใน R2 · `status` open/done · `parent_id` ถ้าเป็นคำตอบกลับ · `created_at`
-
-ดู / export ข้อมูล: D1 → `bms-review` → Console → `SELECT * FROM comments ORDER BY page, no`
+## ดูข้อมูล
+D1 → `bms-review` → Console: `SELECT * FROM comments ORDER BY page, no` · `SELECT * FROM versions ORDER BY key, no`

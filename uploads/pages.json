@@ -1,0 +1,8 @@
+{
+  "ct5-3d":    { "site": "Silom Complex",    "unit": "CT-5 Cooling Tower", "desc": "Fill media, internal spray, in-pipe flow",  "label": "3D model",     "sort": 11 },
+  "ct5-sheet": { "site": "Silom Complex",    "unit": "CT-5 Cooling Tower", "desc": "Fill media, internal spray, in-pipe flow",  "label": "Review sheet", "sort": 10 },
+  "ch-3d":     { "site": "Silom Complex",    "unit": "Chiller-05 RTHD v3", "desc": "Screw rotor, boiling shell, stop state",    "label": "3D model",     "sort": 21 },
+  "ch-sheet":  { "site": "Silom Complex",    "unit": "Chiller-05 RTHD v3", "desc": "Screw rotor, boiling shell, stop state",    "label": "Review sheet", "sort": 20 },
+  "fcu-3d":    { "site": "Rosewood Bangkok", "unit": "FCU B6F-01",         "desc": "Ducted fan coil, 40VDS type",               "label": "3D model",     "sort": 30 },
+  "oau-3d":    { "site": "Rosewood Bangkok", "unit": "OAU 19OAU-01",       "desc": "Outdoor air unit, belt-drive fan, CHW coil", "label": "3D model",     "sort": 40 }
+}

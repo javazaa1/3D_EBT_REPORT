@@ -2,10 +2,12 @@
   "name": "bms-3d-review",
   "private": true,
   "scripts": {
+    "build": "node tools/build.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
-  }
+  },
+  "type": "module"
 }
