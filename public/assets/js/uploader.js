@@ -11,6 +11,7 @@ export function registry(d) {
   (d.versions || []).forEach(v => (R.versions[v.key] = R.versions[v.key] || []).push(v));
   Object.values(R.versions).forEach(a => a.sort((x, y) => x.no - y.no));
   R.pages = R.pages.filter(p => R.versions[p.key].length);
+  R.byKey = {}; R.pages.forEach(p => { R.byKey[p.key] = p; });
   R.latest = k => { const a = R.versions[k] || []; return a[a.length - 1] || null; };
   R.findVer = (k, vid) => (R.versions[k] || []).find(v => v.vid === vid) || null;
   R.title = k => { const p = R.byKey[k]; return p ? p.unit + ' · ' + p.label : k; };

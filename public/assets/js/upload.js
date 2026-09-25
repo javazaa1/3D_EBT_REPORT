@@ -47,11 +47,12 @@ async function readFile(file) {
     items = parts.map(({ key, page, meta: shellMeta }) => {
       const fixed = dlg.dataset.target && parts.length === 1 ? dlg.dataset.target : '';
       const target = fixed || (key && R.byKey[key] ? key : (!key ? guessTarget(page) : ''));
-      const newKey = key || slug(page.title) || slug(note) || 'page';
+      const unitName = (page.title || note).replace(/\s*[—–-]\s*(3D|Design Review).*$/i, '').trim();
+      const newKey = key || ((slug(unitName) || slug(note) || 'page').slice(0, 34) + (page.is3d ? '-3d' : '-sheet'));
       return {
         page, fileName: file.name, target,
         key: target || newKey,
-        meta: Object.assign({ site: '', unit: page.title || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
+        meta: Object.assign({ site: '', unit: unitName || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
           shellMeta ? Object.fromEntries(Object.entries(shellMeta).filter(([, v]) => v !== '' && v != null)) : {}),
       };
     });

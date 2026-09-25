@@ -30,7 +30,11 @@
     (d.versions || []).forEach(v => { (R.versions[v.key] = R.versions[v.key] || []).push(v); });
     Object.values(R.versions).forEach(a => a.sort((x, y) => x.no - y.no));
     R.pages = R.pages.filter(p => (R.versions[p.key] || []).length);   // hide pages without any version
-    R.canUpload = !!d.canUpload;
+    R.byKey = {}; R.pages.forEach(p => { R.byKey[p.key] = p; });
+    // upload buttons only for browsers that were given the upload key (via /upload#k=… or the key prompt);
+    // the server still checks the key on every upload, the button is just not shown to everyone else
+    let hasKey = false; try { hasKey = !!localStorage.getItem('bmsReview.uploadKey'); } catch (e) { /* ignore */ }
+    R.canUpload = !!d.canUpload && hasKey;
   }
 
   /* ── sidebar: grouped by unit (equipment), one pill per page ── */
@@ -86,7 +90,11 @@
   $('#ver-del').addEventListener('click', async () => {
     const v = findVer(cur, curVid);
     if (!v || !confirm('ลบ v' + v.no + ' ของ ' + pageTitle(cur) + '?\nคอมเมนต์ของเวอร์ชันนี้จะยังอยู่')) return;
-    try { await API.deleteVersion(cur, curVid); await reload(); open(cur); } catch (e) { alert('ลบไม่สำเร็จ: ' + e.message); }
+    try { await API.deleteVersion(cur, curVid); } catch (e) { alert('ลบไม่สำเร็จ: ' + e.message); return; }
+    await reload();
+    // deleting the only version removes the page, so fall back to the first page
+    const k = R.byKey[cur] ? cur : (R.pages[0] || {}).key;
+    curVid = null; open(k);
   });
 
   /* ── open a page/version ── */
@@ -94,6 +102,7 @@
     if (!R.byKey[k]) k = (R.pages[0] || {}).key;
     if (!k) return;
     const v = (vid && findVer(k, vid)) || latest(k);
+    if (!v) return;
     if (k === cur && v.vid === curVid) return;
     cur = k; curVid = v.vid; loaded = false;
     ld.style.display = 'flex';

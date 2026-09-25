@@ -12,6 +12,8 @@ const ADD_VERSION = `INSERT OR IGNORE INTO versions (key, vid, no, title, note, 
   SELECT ?1, ?2, COALESCE(MAX(no), 0) + 1, ?3, ?4, ?5, ?6, ?7, ?8 FROM versions WHERE key = ?1`;
 const ADD_PAGE = `INSERT OR IGNORE INTO pages (key, site, unit, descr, label, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
+const DROP_EMPTY_PAGE = 'DELETE FROM pages WHERE key = ?1 AND NOT EXISTS (SELECT 1 FROM versions WHERE key = ?1)';
+
 async function readManifest(request, env) {
   try {
     const r = await env.ASSETS.fetch(new Request(new URL('/p/manifest.json', request.url)));
@@ -88,6 +90,7 @@ export async function addVersion({ request, env }) {
   const stmts = [];
   if (b.page) {
     const p = b.page;
+    stmts.push(env.DB.prepare(DROP_EMPTY_PAGE).bind(key));   // a page left empty earlier gets the new details
     stmts.push(env.DB.prepare(ADD_PAGE).bind(key, s(p.site, 80) || 'อื่นๆ', s(p.unit, 120) || key, s(p.desc, 200), s(p.label, 40) || 'Page', Number(p.sort) || 1000, now));
   }
   stmts.push(env.DB.prepare(ADD_VERSION).bind(key, vid, s(b.title, 200), s(b.note, 300), b.is3d ? 1 : 0, 'web', author, now));
@@ -109,8 +112,12 @@ export async function deleteVersion({ request, env, params }) {
     cursor = l.truncated ? l.cursor : undefined;
   } while (cursor);
   await env.IMAGES.delete(`src/${key}/${vid}.html`);
-  await env.DB.prepare('DELETE FROM versions WHERE key = ? AND vid = ?').bind(key, vid).run();
-  return json({ ok: true });
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM versions WHERE key = ? AND vid = ?').bind(key, vid),
+    env.DB.prepare(DROP_EMPTY_PAGE).bind(key),        // last version gone → page leaves the sidebar
+  ]);
+  const left = await env.DB.prepare('SELECT COUNT(*) AS n FROM versions WHERE key = ?').bind(key).first();
+  return json({ ok: true, pageRemoved: !left.n });
 }
 
 /** GET/HEAD /p/…, /lib/…, /src/… that are not in the static build → R2 (web-uploaded versions). */
