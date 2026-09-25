@@ -122,6 +122,41 @@
     return '';
   }
 
+  /** CSS path to an element, e.g. "body:nth-of-type(1) > div:nth-of-type(1) > figure:nth-of-type(1) > svg:nth-of-type(1) > rect:nth-of-type(4)" */
+  function cssPath(e, d) {
+    const parts = [];
+    for (; e && e.nodeType === 1 && e !== d.documentElement; e = e.parentElement) {
+      if (e.id && /^[A-Za-z][\w-]*$/.test(e.id) && d.querySelectorAll('#' + e.id).length === 1) { parts.unshift('#' + e.id); break; }
+      let i = 1, s = e;
+      while ((s = s.previousElementSibling)) if (s.localName === e.localName) i++;
+      parts.unshift(e.localName + ':nth-of-type(' + i + ')');
+    }
+    return parts.join(' > ');
+  }
+
+  /** Pin tied to the element under the click (+ where inside it), so it follows the layout on any screen size. */
+  function elementAnchor(d, x, y) {
+    let e = d.elementFromPoint(x, y);
+    if (!e || e === d.documentElement || e === d.body) return null;
+    // hair-thin targets (lines, borders) are unstable → use a slightly bigger parent
+    while (e.parentElement && e.parentElement !== d.body) {
+      const r = e.getBoundingClientRect();
+      if (r.width >= 10 && r.height >= 10) break;
+      e = e.parentElement;
+    }
+    const r = e.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const se = d.scrollingElement || d.documentElement;
+    return {
+      type: 'el', sel: cssPath(e, d),
+      x: +((x - r.left) / r.width).toFixed(4), y: +((y - r.top) / r.height).toFixed(4),
+      fx: +((x + se.scrollLeft) / se.scrollWidth).toFixed(4), fy: +((y + se.scrollTop) / se.scrollHeight).toFixed(4),   // fallback
+    };
+  }
+  function anchorElement(a) {
+    try { return a && a.sel && V.doc ? V.doc.querySelector(a.sel) : null; } catch (e) { return null; }
+  }
+
   /** Screen position (px inside the viewer) of a comment's anchor, or null if off-screen. */
   function project(a) {
     const fr = V.frame, W = fr.clientWidth, H = fr.clientHeight;
@@ -137,9 +172,18 @@
         x = c.left + (v.x + 1) / 2 * c.width; y = c.top + (1 - v.y) / 2 * c.height;
         if (x < c.left || x > c.right || y < c.top || y > c.bottom) return null;
       } else { x = c.left + a.x * c.width; y = c.top + a.y * c.height; loose = true; }
+    } else if (a.type === 'el' && d) {
+      const e = anchorElement(a);
+      const r = e && e.getBoundingClientRect();
+      if (r && r.width && r.height) { x = r.left + a.x * r.width; y = r.top + a.y * r.height; }
+      else {   // element gone (edited page) → old document position, drawn dashed
+        const se = d.scrollingElement || d.documentElement;
+        x = a.fx * se.scrollWidth - se.scrollLeft; y = a.fy * se.scrollHeight - se.scrollTop; loose = true;
+      }
     } else if (a.type === 'doc' && d) {
       const se = d.scrollingElement || d.documentElement;
       x = a.x * se.scrollWidth - se.scrollLeft; y = a.y * se.scrollHeight - se.scrollTop;
+      loose = true;   // older pins: exact only at the screen width they were made on
     } else { x = a.x * W; y = a.y * H; }
     if (x < 0 || y < 0 || x > W || y > H) return null;
     return { x, y, loose, behind };
@@ -205,10 +249,9 @@
         snapRel = pk.rel;
         if (pk.hit) { const p = pk.hit.point; anchor = { type: 'world', p: [p.x, p.y, p.z].map(n => +n.toFixed(4)) }; part = meshName(pk.hit.object); }
         else anchor = { type: 'canvas', x: +pk.rel.x.toFixed(4), y: +pk.rel.y.toFixed(4) };
-      } else if (d) part = partFromEl(d.elementFromPoint(x, y));
+      } else if (d) { anchor = elementAnchor(d, x, y) || anchor; part = partFromEl(d.elementFromPoint(x, y)); }
     } else if (d) {
-      const se = d.scrollingElement || d.documentElement;
-      anchor = { type: 'doc', x: +((x + se.scrollLeft) / se.scrollWidth).toFixed(4), y: +((y + se.scrollTop) / se.scrollHeight).toFixed(4) };
+      anchor = elementAnchor(d, x, y) || anchor;
       part = partFromEl(d.elementFromPoint(x, y));
     }
     setPinning(false);
@@ -227,7 +270,7 @@
     const kind = !draft.anchor ? 'คอมเมนต์ทั่วไป (ทั้งหน้า)'
       : draft.anchor.type === 'world' ? 'หมุดบนโมเดล 3D'
       : draft.anchor.type === 'canvas' ? 'หมุดในมุมมอง 3D (ไม่โดนชิ้นส่วน)'
-      : 'หมุดบนหน้า';
+      : draft.anchor.type === 'el' ? 'หมุดบนชิ้นส่วนของหน้า' : 'หมุดบนหน้า';
     el.where.innerHTML = '<b>' + esc(title) + '</b><br>' + esc(kind);
     el.snap.hidden = true; el.err.hidden = true;
     renderThumbs(); fillPartList();
@@ -420,9 +463,12 @@
     if (c.page !== V.key || vidOf(c) !== V.vid) { if (V.findVer(c.page, vidOf(c)) || c.page !== V.key) await V.load(c.page, vidOf(c)); }
     S.activeId = c.id;   // after switching: a page/version change clears the highlight
     if (c.view && V.r3d) goToView(V.r3d, c.view);
-    if (c.anchor && c.anchor.type === 'doc' && V.doc) {
+    const target = c.anchor && c.anchor.type === 'el' ? anchorElement(c.anchor) : null;
+    if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    else if (c.anchor && (c.anchor.type === 'doc' || c.anchor.type === 'el') && V.doc) {
+      const fy = c.anchor.type === 'el' ? c.anchor.fy : c.anchor.y;
       const se = V.doc.scrollingElement || V.doc.documentElement;
-      se.scrollTo({ top: Math.max(0, c.anchor.y * se.scrollHeight - V.frame.clientHeight / 2), behavior: 'smooth' });
+      se.scrollTo({ top: Math.max(0, fy * se.scrollHeight - V.frame.clientHeight / 2), behavior: 'smooth' });
     }
     history.replaceState(null, '', '#' + c.page + '@' + V.vid + '/c=' + c.id);
     render();
