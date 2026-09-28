@@ -1,8 +1,94 @@
 {
-  "ct5-3d":    { "site": "Silom Complex",    "unit": "CT-5 Cooling Tower", "desc": "Fill media, internal spray, in-pipe flow",  "label": "3D model",     "sort": 11 },
-  "ct5-sheet": { "site": "Silom Complex",    "unit": "CT-5 Cooling Tower", "desc": "Fill media, internal spray, in-pipe flow",  "label": "Review sheet", "sort": 10 },
-  "ch-3d":     { "site": "Silom Complex",    "unit": "Chiller-05 RTHD v3", "desc": "Screw rotor, boiling shell, stop state",    "label": "3D model",     "sort": 21 },
-  "ch-sheet":  { "site": "Silom Complex",    "unit": "Chiller-05 RTHD v3", "desc": "Screw rotor, boiling shell, stop state",    "label": "Review sheet", "sort": 20 },
-  "fcu-3d":    { "site": "Rosewood Bangkok", "unit": "FCU B6F-01",         "desc": "Ducted fan coil, 40VDS type",               "label": "3D model",     "sort": 30 },
-  "oau-3d":    { "site": "Rosewood Bangkok", "unit": "OAU 19OAU-01",       "desc": "Outdoor air unit, belt-drive fan, CHW coil", "label": "3D model",     "sort": 40 }
+ "ch-sheet": {
+  "unit": "CHILLER",
+  "desc": "ชิลเลอร์",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 10,
+  "site": "Silom Complex"
+ },
+ "ch-3d": {
+  "unit": "CHILLER",
+  "desc": "ชิลเลอร์",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 11,
+  "site": "Silom Complex"
+ },
+ "pump-sheet": {
+  "unit": "PUMP",
+  "desc": "ปั๊มน้ำ",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 20
+ },
+ "pump-3d": {
+  "unit": "PUMP",
+  "desc": "ปั๊มน้ำ",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 21
+ },
+ "ct5-sheet": {
+  "unit": "COOLING TOWER",
+  "desc": "คูลลิ่งทาวเวอร์",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 30,
+  "site": "Silom Complex"
+ },
+ "ct5-3d": {
+  "unit": "COOLING TOWER",
+  "desc": "คูลลิ่งทาวเวอร์",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 31,
+  "site": "Silom Complex"
+ },
+ "ahu-sheet": {
+  "unit": "AHU",
+  "desc": "เครื่องส่งลมเย็น",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 40
+ },
+ "ahu-3d": {
+  "unit": "AHU",
+  "desc": "เครื่องส่งลมเย็น",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 41
+ },
+ "hp-sheet": {
+  "unit": "AHU HEAT PIPE",
+  "desc": "เครื่องส่งลม Heat Pipe + DX",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 50
+ },
+ "hp-3d": {
+  "unit": "AHU HEAT PIPE",
+  "desc": "เครื่องส่งลม Heat Pipe + DX",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 51
+ },
+ "oau-sheet": {
+  "unit": "OAU",
+  "desc": "เครื่องเติมอากาศ",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 60,
+  "site": "Rosewood Bangkok"
+ },
+ "oau-3d": {
+  "unit": "OAU",
+  "desc": "เครื่องเติมอากาศ",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 61,
+  "site": "Rosewood Bangkok"
+ },
+ "fcu-sheet": {
+  "unit": "FCU",
+  "desc": "แฟนคอยล์",
+  "label": "REVIEW SHEET · สรุปงาน",
+  "sort": 70,
+  "site": "Rosewood Bangkok"
+ },
+ "fcu-3d": {
+  "unit": "FCU",
+  "desc": "แฟนคอยล์",
+  "label": "3D MODEL · โมเดล 3 มิติ",
+  "sort": 71,
+  "site": "Rosewood Bangkok"
+ }
 }

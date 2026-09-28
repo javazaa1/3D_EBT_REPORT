@@ -57,11 +57,12 @@ for (const job of jobs) {
 
 const pages = {};
 for (const v of versions) {
-  pages[v.key] ??= Object.assign(
+  pages[v.key] = Object.assign(
     { site: 'อื่นๆ', unit: v.title || v.key, desc: '', label: v.is3d ? '3D model' : 'Page', sort: 1000 },
     v.shellMeta || {},        // names from the shell file's own sidebar
     meta[v.key] || {},        // uploads/pages.json wins
   );
+  if (v.shellMeta || meta[v.key]) pages[v.key].explicit = true;   // names were set on purpose → keep the site in sync
 }
 write(path.join(PUB, 'p', 'manifest.json'), JSON.stringify({ pages, versions: versions.map(({ shellMeta, ...v }) => v) }, null, 1));
 console.log(`build: ${versions.length} version(s), ${Object.keys(pages).length} page(s), ${libCount} shared file(s)`);

@@ -30,6 +30,24 @@
     activeId: null, busy: false,
   };
 
+  /* ════════ comments panel: show / hide ════════
+     wide screens: a column beside the viewer (body.cm-hidden hides it, remembered)
+     narrow screens: a slide-over (body.cm-open shows it) */
+  const LS_PANEL = 'bmsReview.cmHidden';
+  const wide = () => window.innerWidth > 1180;
+  function panelShown() { return wide() ? !el.body.classList.contains('cm-hidden') : el.body.classList.contains('cm-open'); }
+  function showPanel() {
+    el.body.classList.remove('cm-hidden'); if (!wide()) el.body.classList.add('cm-open');
+    try { localStorage.setItem(LS_PANEL, '0'); } catch (e) { /* ignore */ }
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 30);    // let 3D canvases resize
+  }
+  function hidePanel() {
+    el.body.classList.remove('cm-open'); if (wide()) el.body.classList.add('cm-hidden');
+    try { localStorage.setItem(LS_PANEL, '1'); } catch (e) { /* ignore */ }
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 30);
+  }
+  try { if (localStorage.getItem(LS_PANEL) === '1') el.body.classList.add('cm-hidden'); } catch (e) { /* ignore */ }
+
   /* ════════ helpers ════════ */
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   const fmtDate = s => {
@@ -287,7 +305,7 @@
     el.snap.hidden = true; el.err.hidden = true;
     renderThumbs(); fillPartList();
     el.form.hidden = false;
-    el.body.classList.add('cm-open');
+    showPanel();
     renderPins();
     setTimeout(() => (el.form.author.value ? el.form.body : el.form.author).focus(), 30);
   }
@@ -418,8 +436,13 @@
       : '<div class="empty">' + (S.status === 'done' ? 'ยังไม่มีรายการที่แก้แล้ว' : 'ยังไม่มีคอมเมนต์ในหน้านี้<br>กด <b>📍 ปักหมุดคอมเมนต์</b> แล้วคลิกจุดบนโมเดลหรือเอกสาร') + '</div>';
     // open-count badges on the sidebar + floating button
     const open = topLevel().filter(c => !isDone(c));
-    $$('.sb').forEach(b => { const n = open.filter(c => c.page === b.dataset.k).length; if (n) b.dataset.n = n; else delete b.dataset.n; });
-    el.badge.textContent = open.filter(c => c.page === V.key).length;
+    $$('#nav-sub .sb').forEach(b => { const n = open.filter(c => c.page === b.dataset.k).length; if (n) b.dataset.n = n; else delete b.dataset.n; });
+    $$('#nav-tabs .nv').forEach(b => {
+      const keys = V.registry.pages.filter(p => String(p.unit || p.key) === b.dataset.u).map(p => p.key);
+      const n = open.filter(c => keys.includes(c.page)).length; if (n) b.dataset.n = n; else delete b.dataset.n;
+    });
+    const nOpen = open.filter(c => c.page === V.key).length;
+    el.badge.textContent = nOpen; el.badge.classList.toggle('zero', !nOpen);
     renderPins();
   }
 
@@ -507,7 +530,7 @@
       if (!n) {
         n = document.createElement('button'); n.type = 'button'; n.className = 'pin'; n.dataset.id = c.id;
         n.innerHTML = '<span><b></b></span>';
-        n.onclick = () => { el.body.classList.add('cm-open'); focusComment(c); };
+        n.onclick = () => { showPanel(); focusComment(c); };
         el.pins.appendChild(n); pinNodes.set(c.id, n);
       }
       n.querySelector('b').textContent = c.no || '•';
@@ -546,8 +569,8 @@
   /* ════════ misc ════════ */
   function lightbox(src) { $('img', el.lb).src = src; el.lb.hidden = false; }
   el.lb.addEventListener('click', e => { if (e.target.tagName !== 'IMG') el.lb.hidden = true; });
-  el.toggle.addEventListener('click', () => el.body.classList.toggle('cm-open'));
-  const closeBtn = $('#cm-close'); if (closeBtn) closeBtn.addEventListener('click', () => el.body.classList.remove('cm-open'));
+  el.toggle.addEventListener('click', () => (panelShown() ? hidePanel() : showPanel()));
+  const closeBtn = $('#cm-close'); if (closeBtn) closeBtn.addEventListener('click', hidePanel);
 
   document.addEventListener('viewer:change', () => { setPinning(false); closeForm(); S.activeId = null; render(); });
   document.addEventListener('registry:change', () => render());
@@ -571,7 +594,7 @@
     const h = V.parseHash();
     if (h && h.comment) {
       const c = S.all.find(x => x.id === h.comment);
-      if (c) { setSeg('status', 'all'); el.body.classList.add('cm-open'); focusComment(c); }
+      if (c) { setSeg('status', 'all'); showPanel(); focusComment(c); }
     }
     // keep everyone's view in sync
     if (mode === 'remote') setInterval(() => { if (!document.hidden && el.form.hidden && !$('.rp-form')) { refresh(); V.reload().catch(() => {}); } }, 30000);

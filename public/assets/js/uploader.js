@@ -55,7 +55,7 @@ export async function prepare(file, R, fixedTarget) {
       (key && R.byKey[key] ? key : (!key ? matchPage(page, R) : ''));
     const unit = (page.title || file.name.replace(/\.html?$/i, '')).replace(/\s*[—–-]\s*(3D|Design Review).*$/i, '').trim();
     return {
-      page, fileName: file.name, target, shellKey: key || null,
+      page, fileName: file.name, target, shellKey: key || null, metaFromShell: !!shellMeta,
       dup: target ? R.findVer(target, page.vid) : null,
       key: target || key || newKey(R, unit, page.is3d),
       meta: Object.assign({ site: '', unit, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
@@ -88,6 +88,11 @@ export async function send(items, { note, author, onProgress }) {
     tick('ไลบรารี');
   }), 4);
 
+  // skipped (already uploaded) pages from a multi-page file: still refresh their menu names
+  for (const it of items.filter(x => x.dup && x.metaFromShell && x.target)) {
+    try { await API().addVersion({ key: it.target, vid: it.page.vid, title: it.page.title, is3d: it.page.is3d, page: it.meta }); }
+    catch (e) { if (!(e.data && e.data.code === 'duplicate')) throw e; }
+  }
   const out = [];
   for (const it of todo) {
     const key = it.target || it.key, vid = it.page.vid, base = 'p/' + key + '/' + vid + '/';
@@ -100,7 +105,8 @@ export async function send(items, { note, author, onProgress }) {
     try {
       await API().addVersion({
         key, vid, title: it.page.title, is3d: it.page.is3d, note, author,
-        page: it.target ? undefined : Object.assign({}, it.meta, { sort: 1000 }),
+        // new page: its names · existing page: names only when the file's own menu defines them
+        page: !it.target ? Object.assign({ sort: 1000 }, it.meta) : (it.metaFromShell ? it.meta : undefined),
       });
     } catch (e) { if (!(e.data && e.data.code === 'duplicate')) throw e; }
     out.push({ key, vid });

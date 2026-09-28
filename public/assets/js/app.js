@@ -8,7 +8,7 @@
   'use strict';
   const API = window.CommentAPI;
   const $ = s => document.querySelector(s);
-  const fr = $('#fr'), ld = $('#ld'), navList = $('#nav-list'), sel = $('#ver');
+  const fr = $('#fr'), ld = $('#ld'), navTabs = $('#nav-tabs'), navSub = $('#nav-sub'), sel = $('#ver');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LS_KEY = 'bmsReview.k';
   const NEW_DAYS = 3;
@@ -38,38 +38,56 @@
   }
 
   /* ── sidebar: grouped by unit (equipment), one pill per page ── */
-  function renderNav() {
-    const units = [];
-    const byUnit = {};
+  /* ── orange tabs = equipment (unit); sub bar = its pages (REVIEW SHEET / 3D MODEL …) ── */
+  function groups() {
+    const list = [], byUnit = {};
     R.pages.forEach(p => {
-      const u = (p.site || '') + '|' + (p.unit || p.key);
-      if (!byUnit[u]) { byUnit[u] = { site: p.site, unit: p.unit || p.key, desc: p.desc, pages: [] }; units.push(byUnit[u]); }
-      byUnit[u].pages.push(p);
-      if (!byUnit[u].desc && p.desc) byUnit[u].desc = p.desc;
+      const u = String(p.unit || p.key).trim().toLowerCase();
+      if (!byUnit[u]) { byUnit[u] = { unit: p.unit || p.key, desc: p.desc || '', pages: [], sort: p.sort ?? 1000 }; list.push(byUnit[u]); }
+      const g = byUnit[u];
+      g.pages.push(p);
+      g.sort = Math.min(g.sort, p.sort ?? 1000);
+      if (!g.desc && p.desc) g.desc = p.desc;
     });
-    navList.innerHTML = units.map(u => {
-      const main = u.pages.find(p => /3d/i.test(p.label)) || u.pages[0];
-      return '<div class="grp"><button class="nb" data-k="' + esc(main.key) + '"><span class="p">' + esc(u.site || '') + '</span>' +
-        '<b>' + esc(u.unit) + '</b>' + (u.desc ? '<small>' + esc(u.desc) + '</small>' : '') + '</button>' +
-        '<div class="sub">' + u.pages.map(p => {
-          const lv = latest(p.key);
-          return '<button class="sb' + (isNew(lv) ? ' new' : '') + '" data-k="' + esc(p.key) + '" title="' +
-            esc('v' + lv.no + ' · ' + fmtDate(lv.created_at) + (lv.note ? ' · ' + lv.note : '')) + '">' + esc(p.label) +
-            '<em>v' + lv.no + '</em></button>';
-        }).join('') + '</div></div>';
+    list.sort((a, b) => a.sort - b.sort);
+    // sheet first, then 3D, then anything else
+    const rank = p => /sheet/i.test(p.label) ? 0 : /3d/i.test(p.label) ? 1 : 2;
+    list.forEach(g => g.pages.sort((a, b) => rank(a) - rank(b) || (a.sort ?? 0) - (b.sort ?? 0)));
+    return list;
+  }
+  const groupOf = k => groups().find(g => g.pages.some(p => p.key === k));
+
+  function renderNav() {
+    const gs = groups();
+    navTabs.innerHTML = gs.map(g => {
+      const main = g.pages[0], fresh = g.pages.some(p => isNew(latest(p.key)));
+      return '<button class="nv' + (fresh ? ' new' : '') + '" data-k="' + esc(main.key) + '" data-u="' + esc(g.unit) + '">' +
+        '<b>' + esc(g.unit) + '</b>' + (g.desc ? '<span>' + esc(g.desc) + '</span>' : '') + '</button>';
     }).join('') || '<div class="empty">ยังไม่มีหน้า — อัพโหลดไฟล์ HTML หรือใส่ไฟล์ในโฟลเดอร์ uploads/</div>';
-    navList.querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => open(b.dataset.k)));
-    markActive();
+    navTabs.querySelectorAll('.nv').forEach(b => b.addEventListener('click', () => open(b.dataset.k)));
+    renderSub();
     $('#up-btn').hidden = !R.canUpload;
     $('#ver-up').hidden = !R.canUpload;
   }
-  function markActive() { navList.querySelectorAll('.sb').forEach(b => b.classList.toggle('on', b.dataset.k === cur)); }
+  function renderSub() {
+    const g = groupOf(cur);
+    navSub.innerHTML = g ? g.pages.map(p => {
+      const lv = latest(p.key);
+      return '<button class="sb" data-k="' + esc(p.key) + '" title="' +
+        esc('v' + lv.no + ' · ' + fmtDate(lv.created_at) + (lv.note ? ' · ' + lv.note : '')) + '">' + esc(p.label) + '<em>v' + lv.no + '</em></button>';
+    }).join('') : '';
+    navSub.querySelectorAll('.sb').forEach(b => b.addEventListener('click', () => open(b.dataset.k)));
+    markActive();
+  }
+  function markActive() {
+    const g = groupOf(cur);
+    navTabs.querySelectorAll('.nv').forEach(b => b.classList.toggle('on', !!g && b.dataset.u === g.unit));
+    navSub.querySelectorAll('.sb').forEach(b => b.classList.toggle('on', b.dataset.k === cur));
+  }
 
   /* ── version bar ── */
   function renderBar() {
     const p = R.byKey[cur], vs = R.versions[cur] || [], v = findVer(cur, curVid), lv = latest(cur);
-    $('#bar-unit').textContent = p ? p.unit : '';
-    $('#bar-label').textContent = p ? p.label : '';
     sel.innerHTML = vs.slice().reverse().map(x =>
       '<option value="' + esc(x.vid) + '">v' + x.no + ' · ' + esc(fmtDate(x.created_at)) + (x === lv ? ' (ล่าสุด)' : '') +
       (x.note ? ' — ' + esc(x.note.slice(0, 50)) : '') + '</option>').join('');
@@ -78,7 +96,9 @@
     const chip = $('#ver-old');
     chip.hidden = !old;
     if (old) chip.innerHTML = 'เวอร์ชันเก่า · <a href="#' + esc(cur) + '">ดู v' + lv.no + '</a>';
-    $('#ver-meta').textContent = v ? [v.title, v.author ? 'โดย ' + v.author : '', v.source === 'git' ? 'Git' : 'เว็บ'].filter(Boolean).join(' · ') : '';
+    sel.title = v ? [v.title, v.author ? 'โดย ' + v.author : '', v.source === 'git' ? 'Git' : 'เว็บ'].filter(Boolean).join(' · ') : '';
+    $('#doc-sub').textContent = 'ฉบับร่างเพื่ออนุมัติ' + (v ? ' · v' + v.no + ' · ' + fmtDate(v.created_at) : '');
+    document.title = (p ? p.unit + ' · ' + p.label + ' — ' : '') + 'JEC · BMS 3D Design Review';
     const base = '/p/' + cur + '/' + curVid + '/';
     $('#ver-open').href = base;
     $('#ver-src').href = '/src/' + cur + '/' + curVid + '.html';
@@ -107,7 +127,7 @@
     cur = k; curVid = v.vid; loaded = false;
     ld.style.display = 'flex';
     fr.src = '/p/' + k + '/' + v.vid + '/';
-    markActive(); renderBar();
+    renderSub(); renderBar();
     try { localStorage.setItem(LS_KEY, k); } catch (e) { /* private mode */ }
     const want = '#' + k + (v.vid === latest(k).vid ? '' : '@' + v.vid);
     if (!location.hash.startsWith(want) || (v.vid === latest(k).vid && location.hash.includes('@'))) history.replaceState(null, '', want);
@@ -163,7 +183,7 @@
 
   (async function init() {
     await API.init();
-    try { await loadRegistry(); } catch (e) { navList.innerHTML = '<div class="empty">โหลดรายการหน้าไม่สำเร็จ: ' + esc(e.message) + '</div>'; }
+    try { await loadRegistry(); } catch (e) { navTabs.innerHTML = '<div class="empty">โหลดรายการหน้าไม่สำเร็จ: ' + esc(e.message) + '</div>'; }
     renderNav();
     const h = parseHash();
     let k0 = h && R.byKey[h.key] ? h.key : null;

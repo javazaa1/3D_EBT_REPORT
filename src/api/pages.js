@@ -12,6 +12,14 @@ const ADD_VERSION = `INSERT OR IGNORE INTO versions (key, vid, no, title, note, 
   SELECT ?1, ?2, COALESCE(MAX(no), 0) + 1, ?3, ?4, ?5, ?6, ?7, ?8 FROM versions WHERE key = ?1`;
 const ADD_PAGE = `INSERT OR IGNORE INTO pages (key, site, unit, descr, label, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
+// names from an uploaded file's own menu refresh an existing page; empty values keep the old ones
+const UPDATE_NAMES = `UPDATE pages SET site = COALESCE(NULLIF(?, ''), site), unit = COALESCE(NULLIF(?, ''), unit),
+  descr = COALESCE(NULLIF(?, ''), descr), label = COALESCE(NULLIF(?, ''), label), sort = COALESCE(?, sort) WHERE key = ?`;
+function nameArgs(p, key) {
+  const t = (v, n) => String(v ?? '').trim().slice(0, n);
+  const sort = p.sort === null || p.sort === undefined || p.sort === '' || !Number.isFinite(Number(p.sort)) ? null : Number(p.sort);
+  return [t(p.site, 80), t(p.unit, 120), t(p.desc, 200), t(p.label, 60), sort, key];
+}
 const DROP_EMPTY_PAGE = 'DELETE FROM pages WHERE key = ?1 AND NOT EXISTS (SELECT 1 FROM versions WHERE key = ?1)';
 
 async function readManifest(request, env) {
@@ -25,15 +33,28 @@ export async function listPages({ request, env }) {
   const man = await readManifest(request, env);
   const now = new Date().toISOString();
   const [pg, vs] = await env.DB.batch([
-    env.DB.prepare('SELECT key FROM pages'),
-    env.DB.prepare('SELECT key, vid FROM versions'),
+    env.DB.prepare('SELECT key, site, unit, descr, label, sort FROM pages'),
+    env.DB.prepare('SELECT key, vid, source FROM versions'),
   ]);
+  const rowOf = Object.fromEntries(pg.results.map(r => [r.key, r]));
+  const hasWeb = new Set(vs.results.filter(r => r.source === 'web').map(r => r.key));
   const havePage = new Set(pg.results.map(r => r.key));
   const haveVer = new Set(vs.results.map(r => r.key + '@' + r.vid));
   const stmts = [];
   for (const [key, m] of Object.entries(man.pages || {})) {
     if (!havePage.has(key) && KEY_RE.test(key))
       stmts.push(env.DB.prepare(ADD_PAGE).bind(key, m.site ?? null, m.unit ?? key, m.desc ?? '', m.label ?? 'Page', m.sort ?? 1000, now));
+  }
+  // names set in git (uploads/pages.json or a shell file's menu) follow the repo — unless the page
+  // also has web uploads, whose names then win
+  for (const [key, m] of Object.entries(man.pages || {})) {
+    const r = rowOf[key];
+    if (!r || !m.explicit || hasWeb.has(key)) continue;
+    const want = { site: m.site ?? r.site, unit: m.unit ?? r.unit, descr: m.desc ?? r.descr, label: m.label ?? r.label, sort: m.sort ?? r.sort };
+    if (want.site !== r.site || want.unit !== r.unit || want.descr !== r.descr || want.label !== r.label || want.sort !== r.sort) {
+      stmts.push(env.DB.prepare('UPDATE pages SET site = ?, unit = ?, descr = ?, label = ?, sort = ? WHERE key = ?')
+        .bind(want.site, want.unit, want.descr, want.label, want.sort, key));
+    }
   }
   for (const v of man.versions || []) {
     if (!haveVer.has(v.key + '@' + v.vid) && KEY_RE.test(v.key) && VID_RE.test(v.vid))
@@ -82,17 +103,22 @@ export async function addVersion({ request, env }) {
   const s = (v, n) => String(v ?? '').trim().slice(0, n);
   const key = s(b.key, 40), vid = s(b.vid, 8);
   if (!KEY_RE.test(key) || !VID_RE.test(vid)) return json({ error: 'Invalid key/vid' }, 400);
-  if (!(await env.IMAGES.head(`p/${key}/${vid}/index.html`))) return json({ error: 'ยังไม่ได้อัพโหลดไฟล์ของเวอร์ชันนี้' }, 400);
   const exists = await env.DB.prepare('SELECT no FROM versions WHERE key = ? AND vid = ?').bind(key, vid).first();
-  if (exists) return json({ error: `ไฟล์นี้ตรงกับ v${exists.no} ที่มีอยู่แล้ว`, code: 'duplicate', no: exists.no }, 409);
+  if (exists) {
+    if (b.page) await env.DB.prepare(UPDATE_NAMES).bind(...nameArgs(b.page, key)).run();
+    return json({ error: `ไฟล์นี้ตรงกับ v${exists.no} ที่มีอยู่แล้ว`, code: 'duplicate', no: exists.no }, 409);
+  }
+  // (checked after the duplicate test: versions that came from git have no files in R2)
+  if (!(await env.IMAGES.head(`p/${key}/${vid}/index.html`))) return json({ error: 'ยังไม่ได้อัพโหลดไฟล์ของเวอร์ชันนี้' }, 400);
   const now = new Date().toISOString();
   const author = s(request.headers.get('cf-access-authenticated-user-email') || b.author, 80) || null;
   const stmts = [];
   if (b.page) {
     const p = b.page;
     stmts.push(env.DB.prepare(DROP_EMPTY_PAGE).bind(key));   // a page left empty earlier gets the new details
-    stmts.push(env.DB.prepare(ADD_PAGE).bind(key, s(p.site, 80) || 'อื่นๆ', s(p.unit, 120) || key, s(p.desc, 200), s(p.label, 40) || 'Page', Number(p.sort) || 1000, now));
+    stmts.push(env.DB.prepare(ADD_PAGE).bind(key, s(p.site, 80) || 'อื่นๆ', s(p.unit, 120) || key, s(p.desc, 200), s(p.label, 60) || 'Page', Number(p.sort) || 1000, now));
   }
+  if (b.page) stmts.push(env.DB.prepare(UPDATE_NAMES).bind(...nameArgs(b.page, key)));   // file's menu names refresh an existing page
   stmts.push(env.DB.prepare(ADD_VERSION).bind(key, vid, s(b.title, 200), s(b.note, 300), b.is3d ? 1 : 0, 'web', author, now));
   await env.DB.batch(stmts);
   const v = await env.DB.prepare('SELECT key, vid, no, title, note, is3d, source, author, created_at FROM versions WHERE key = ? AND vid = ?').bind(key, vid).first();

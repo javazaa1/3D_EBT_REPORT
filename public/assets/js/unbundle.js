@@ -70,6 +70,20 @@ export function splitShell(html) {
       meta[k] = { site: site ? text(site) : '', unit: unit ? text(unit) : '', desc: desc ? text(desc) : '', label, sort: sort++ };
     }
   }
+  // JEC-style shell: orange tabs <button class="nv" data-g="ch"><b>CHILLER</b><span>ชิลเลอร์</span></button>
+  // + sub buttons #sb-sheet / #sb-3d; pages are "<group>-sheet" / "<group>-3d"
+  if (!Object.keys(meta).length) {
+    const lab = id => { const m = html.match(new RegExp('<button[^>]*id="' + id + '"[^>]*>([\\s\\S]*?)</button>')); return m ? text(m[1]) : ''; };
+    const sheetLabel = lab('sb-sheet') || 'REVIEW SHEET', modelLabel = lab('sb-3d') || '3D MODEL';
+    let gi = 0;
+    for (const m of html.matchAll(/<button class="nv[^"]*" data-g="([\w-]+)">([\s\S]*?)<\/button>/g)) {
+      const unit = text((m[2].match(/<b>([\s\S]*?)<\/b>/) || [])[1] || m[1]);
+      const desc = text((m[2].match(/<span>([\s\S]*?)<\/span>/) || [])[1] || '');
+      meta[m[1] + '-sheet'] = { site: '', unit, desc, label: sheetLabel, sort: 10 + gi * 10 };
+      meta[m[1] + '-3d'] = { site: '', unit, desc, label: modelLabel, sort: 11 + gi * 10 };
+      gi++;
+    }
+  }
   out.forEach(o => { o.meta = meta[o.key] || null; });
   return out;
 }

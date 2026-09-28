@@ -3,28 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BMS 3D — Design Review</title>
+<title>JEC · BMS 3D Design Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body>
 
-<!-- ───────── Left: page navigation ───────── -->
-<aside id="nav">
-  <div class="hd"><h1>BMS 3D — Design Review</h1><span id="nav-sub">Draft for approval</span></div>
-  <div id="nav-list"></div>
-  <div class="ft">
-    <button id="up-btn" class="btn sm up" type="button" hidden>⬆ อัพโหลด HTML</button>
-    <div>3D: drag to rotate, scroll to zoom.<br>Best in Chrome or Edge.</div>
-  </div>
-</aside>
+<!-- ───────── Header ───────── -->
+<header id="top"><div class="wrap">
+  <div class="logo">JEC</div>
+  <div class="brand"><div class="b-th">บริษัท จาร์ดีน เอ็นจิเนียริ่ง จำกัด</div><div class="b-en">Jardine Engineering Company Limited</div><div class="b-tag">Together we engineer a better Asia</div></div>
+  <div class="doc"><b>BMS 3D · DESIGN REVIEW</b><span id="doc-sub">ฉบับร่างเพื่ออนุมัติ</span>
+    <button id="up-btn" class="up-link" type="button" hidden>⬆ อัพโหลด HTML</button></div>
+</div></header>
 
-<!-- ───────── Centre: viewer + pin overlay ───────── -->
-<main id="viewer">
-  <div id="bar">
-    <div class="bar-t"><b id="bar-unit"></b><span id="bar-label"></span></div>
+<!-- ───────── Equipment tabs (built from the page list) ───────── -->
+<nav id="tabs"><div class="wrap" id="nav-tabs"></div></nav>
+
+<!-- ───────── Sub bar: REVIEW SHEET / 3D MODEL · version · comments ───────── -->
+<div id="subbar"><div class="wrap">
+  <div id="nav-sub" class="subs"></div>
+  <div class="vbar">
     <label class="ver"><span>เวอร์ชัน</span><select id="ver"></select></label>
     <span id="ver-old" class="chip warn" hidden></span>
-    <span id="ver-meta" class="ver-meta"></span>
     <span class="bar-act">
       <button id="ver-up" class="icon" type="button" title="อัพโหลดเวอร์ชันใหม่ของหน้านี้" hidden>⬆</button>
       <span class="dl">
@@ -37,21 +39,26 @@
       <a id="ver-open" class="icon" target="_blank" rel="noopener" title="เปิดในแท็บใหม่">↗</a>
       <button id="ver-del" class="icon del" type="button" title="ลบเวอร์ชันนี้" hidden>🗑</button>
     </span>
+    <button id="cm-toggle" class="cm-btn" type="button" title="แสดง / ซ่อนความคิดเห็น">💬 ความคิดเห็น <b id="cm-badge">0</b></button>
   </div>
+</div></div>
+
+<div id="work">
+<!-- ───────── Viewer + pin overlay ───────── -->
+<main id="viewer">
   <div id="stage">
-    <div id="ld">Loading…</div>
+    <div id="ld">กำลังโหลด…</div>
     <iframe id="fr" title="Viewer"></iframe>
     <div id="ov" aria-hidden="true"></div>          <!-- catches clicks while pinning -->
     <div id="pins"></div>                           <!-- numbered pins drawn over the viewer -->
     <div id="pinhint" hidden>คลิกตรงจุดที่ต้องการคอมเมนต์ · <kbd>Esc</kbd> ยกเลิก</div>
-    <button id="cm-toggle" class="fab" type="button" title="ความคิดเห็น">💬 <span id="cm-badge">0</span></button>
   </div>
 </main>
 
 <!-- ───────── Right: comments ───────── -->
 <section id="cm" aria-label="ความคิดเห็น">
   <header class="cm-hd">
-    <div class="cm-title"><h2>ความคิดเห็น</h2><span id="cm-mode" class="mode"></span><button id="cm-close" class="x-only" type="button" aria-label="ปิด">✕</button></div>
+    <div class="cm-title"><h2>ความคิดเห็น</h2><span id="cm-mode" class="mode"></span><button id="cm-close" class="x-only" type="button" aria-label="ซ่อนความคิดเห็น" title="ซ่อนความคิดเห็น">✕</button></div>
     <div class="cm-actions">
       <button id="pin-btn" class="btn pri" type="button">📍 ปักหมุดคอมเมนต์</button>
       <button id="new-btn" class="btn" type="button" title="คอมเมนต์ทั้งหน้า ไม่ระบุจุด">＋ ทั่วไป</button>
@@ -94,6 +101,7 @@
 
   <div id="cm-list" class="cm-list"></div>
 </section>
+</div>
 
 <!-- Image lightbox -->
 <div id="lb" hidden><img alt=""><button type="button" aria-label="ปิด">✕</button></div>

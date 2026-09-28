@@ -50,7 +50,7 @@ async function readFile(file) {
       const unitName = (page.title || note).replace(/\s*[—–-]\s*(3D|Design Review).*$/i, '').trim();
       const newKey = key || ((slug(unitName) || slug(note) || 'page').slice(0, 34) + (page.is3d ? '-3d' : '-sheet'));
       return {
-        page, fileName: file.name, target,
+        page, fileName: file.name, target, metaFromShell: !!shellMeta,
         key: target || newKey,
         meta: Object.assign({ site: '', unit: unitName || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
           shellMeta ? Object.fromEntries(Object.entries(shellMeta).filter(([, v]) => v !== '' && v != null)) : {}),
