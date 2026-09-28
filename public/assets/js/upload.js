@@ -49,11 +49,16 @@ async function readFile(file) {
       const target = fixed || (key && R.byKey[key] ? key : (!key ? guessTarget(page) : ''));
       const unitName = (page.title || note).replace(/\s*[—–-]\s*(3D|Design Review).*$/i, '').trim();
       const newKey = key || ((slug(unitName) || slug(note) || 'page').slice(0, 34) + (page.is3d ? '-3d' : '-sheet'));
+      const meta = Object.assign({ site: '', unit: unitName || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
+        shellMeta ? Object.fromEntries(Object.entries(shellMeta).filter(([, v]) => v !== '' && v != null)) : {});
       return {
         page, fileName: file.name, target, metaFromShell: !!shellMeta,
+        shellKey: key || null, fileMeta: Object.assign({}, meta),          // what came with the file
+        // mode: 'target' = new version of an existing page · 'file' = new page exactly as the file says
+        //       'new' = new page with names typed here · 'skip' = don't upload this one
+        mode: target ? 'target' : (shellMeta && key ? 'file' : 'new'),
         key: target || newKey,
-        meta: Object.assign({ site: '', unit: unitName || newKey, desc: '', label: page.is3d ? '3D model' : 'Review sheet' },
-          shellMeta ? Object.fromEntries(Object.entries(shellMeta).filter(([, v]) => v !== '' && v != null)) : {}),
+        meta,
       };
     });
     $('#up-note').value = note;
@@ -74,18 +79,25 @@ function renderItems() {
     '<datalist id="dl-site">' + sites.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist>' +
     '<datalist id="dl-unit">' + units.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist>' +
     '<datalist id="dl-label"><option value="3D model"><option value="Review sheet"></datalist>' +
+    (items.length > 1 ? '<div class="up-bulk"><span>' + items.length + ' หน้าในไฟล์</span>' +
+      '<button type="button" class="btn sm" data-bulk="file">📄 ตามไฟล์ทั้งหมด</button>' +
+      '<button type="button" class="btn sm" data-bulk="skip">🚫 ไม่อัพทั้งหมด</button></div>' : '') +
     items.map((it, i) => {
-      const dup = it.target && V.findVer(it.target, it.page.vid);
+      const dup = it.mode === 'target' && it.target && V.findVer(it.target, it.page.vid);
+      if (it.mode === 'skip') {
+        return '<div class="ui skip" data-i="' + i + '"><div class="ui-h"><span class="chip">' + (it.page.is3d ? '3D' : 'Page') + '</span><b>' +
+          esc(it.page.title || it.fileName) + '</b><small>🚫 ไม่อัพหน้านี้</small></div>' + pickHTML(it) + '</div>';
+      }
       const size = it.page.files.reduce((n, f) => n + f.bytes.length, 0) + it.page.libs.reduce((n, f) => n + f.bytes.length, 0);
       return '<div class="ui' + (dup ? ' dup' : '') + '" data-i="' + i + '">' +
         '<div class="ui-h"><span class="chip">' + (it.page.is3d ? '3D' : 'Page') + '</span><b>' + esc(it.page.title || it.fileName) + '</b>' +
         '<small>' + it.page.files.length + ' ไฟล์ + ' + it.page.libs.length + ' ไลบรารี · ' + (size / 1048576).toFixed(1) + ' MB' +
         (it.page.is3d ? (it.page.hooked ? ' · หมุด 3D ✓' : ' · ⚠ หมุดจะไม่ติดโมเดล') : '') + '</small></div>' +
-        '<label>อัพเป็น<select data-f="target"><option value="">＋ หน้าใหม่</option>' +
-        R.pages.map(p => '<option value="' + esc(p.key) + '"' + (p.key === it.target ? ' selected' : '') + '>เวอร์ชันใหม่ของ: ' +
-          esc(p.unit + ' · ' + p.label) + ' (ตอนนี้ v' + (V.latest(p.key) || {}).no + ')</option>').join('') + '</select></label>' +
+        pickHTML(it) +
         (dup ? '<p class="warn">ไฟล์นี้ตรงกับ v' + dup.no + ' ที่มีอยู่แล้ว — จะข้าม</p>' : '') +
-        (it.target ? '' :
+        (it.mode === 'file' ? '<p class="ui-file">📄 <b>' + esc(it.meta.unit) + '</b> · ' + esc(it.meta.label) +
+          (it.meta.desc ? ' · ' + esc(it.meta.desc) : '') + ' <code>' + esc(it.key) + '</code></p>' : '') +
+        (it.mode !== 'new' ? '' :
           '<div class="f-grid">' +
           '<label>ไซต์<input data-f="site" list="dl-site" value="' + esc(it.meta.site) + '" placeholder="เช่น Silom Complex"></label>' +
           '<label>อุปกรณ์<input data-f="unit" list="dl-unit" value="' + esc(it.meta.unit) + '"></label>' +
@@ -97,7 +109,7 @@ function renderItems() {
     }).join('');
   itemsEl.querySelectorAll('[data-f]').forEach(inp => inp.addEventListener(inp.tagName === 'SELECT' ? 'change' : 'input', () => {
     const it = items[+inp.closest('.ui').dataset.i], f = inp.dataset.f;
-    if (f === 'target') { it.target = inp.value; it.key = inp.value || slug(it.meta.unit + '-' + (it.page.is3d ? '3d' : 'sheet')) || it.key; renderItems(); return; }
+    if (f === 'target') { setMode(it, inp.value); renderItems(); return; }
     if (f === 'key') it.key = slug(inp.value) || inp.value;
     else {
       it.meta[f] = inp.value;
@@ -110,14 +122,46 @@ function renderItems() {
     validate();
   }));
   itemsEl.querySelectorAll('[data-f=key]').forEach(i => i.addEventListener('input', () => { i.dataset.touched = '1'; }));
+  itemsEl.querySelectorAll('[data-bulk]').forEach(b => b.addEventListener('click', () => {
+    items.forEach(it => setMode(it, b.dataset.bulk === 'skip' ? '__skip' : fileChoice(it)));
+    renderItems();
+  }));
   validate();
 }
 
+/** "อัพเป็น" choices: as the file says · new version of an existing page · new page (type names) · skip */
+function fileChoice(it) {
+  if (it.shellKey && V.registry.byKey[it.shellKey]) return it.shellKey;   // file's page already exists → new version of it
+  if (it.metaFromShell && it.shellKey) return '__file';
+  return it.target || '__new';
+}
+function pickHTML(it) {
+  const R = V.registry, cur = it.mode === 'skip' ? '__skip' : it.mode === 'file' ? '__file' : it.mode === 'new' ? '__new' : it.target;
+  const o = (v, t) => '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + t + '</option>';
+  return '<label>อัพเป็น<select data-f="target">' +
+    (it.metaFromShell && it.shellKey && !R.byKey[it.shellKey] ? o('__file', '📄 ตามไฟล์ — หน้าใหม่ ' + esc(it.fileMeta.unit + ' · ' + it.fileMeta.label)) : '') +
+    R.pages.map(p => o(p.key, 'เวอร์ชันใหม่ของ: ' + esc(p.unit + ' · ' + p.label) + ' (ตอนนี้ v' + (V.latest(p.key) || {}).no + ')' +
+      (p.key === it.shellKey ? ' — ตามไฟล์' : ''))).join('') +
+    o('__new', '＋ หน้าใหม่ (ตั้งชื่อเอง)') +
+    o('__skip', '🚫 ไม่อัพหน้านี้') + '</select></label>';
+}
+function setMode(it, v) {
+  if (v === '__skip') { it.mode = 'skip'; return; }
+  if (v === '__file') { it.mode = 'file'; it.target = ''; it.key = it.shellKey; it.meta = Object.assign({}, it.fileMeta); return; }
+  if (v === '__new') {
+    it.mode = 'new'; it.target = '';
+    if (!it.key || V.registry.byKey[it.key]) it.key = (slug(it.meta.unit) || 'page').slice(0, 34) + (it.page.is3d ? '-3d' : '-sheet');
+    return;
+  }
+  it.mode = 'target'; it.target = v; it.key = v;
+}
+
 function validate() {
-  const todo = items.filter(it => !(it.target && V.findVer(it.target, it.page.vid)));
-  const bad = todo.find(it => !it.target && (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(it.key) || V.registry.byKey[it.key] || !it.meta.unit.trim()));
+  const todo = items.filter(it => it.mode !== 'skip' && !(it.mode === 'target' && V.findVer(it.target, it.page.vid)));
+  const bad = todo.find(it => it.mode !== 'target' && (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(it.key) || V.registry.byKey[it.key] || !it.meta.unit.trim()));
   go.disabled = busy || !todo.length || !!bad;
-  go.textContent = todo.length > 1 ? 'อัพโหลด ' + todo.length + ' หน้า' : 'อัพโหลด';
+  const skipped = items.filter(it => it.mode === 'skip').length;
+  go.textContent = (todo.length > 1 ? 'อัพโหลด ' + todo.length + ' หน้า' : todo.length ? 'อัพโหลด' : 'ไม่มีหน้าที่จะอัพ') + (skipped ? ' (ข้าม ' + skipped + ')' : '');
   if (bad && V.registry.byKey[bad.key]) showErr('รหัสหน้า "' + bad.key + '" มีอยู่แล้ว — เลือก "เวอร์ชันใหม่ของ…" หรือเปลี่ยนรหัส');
   else err.hidden = true;
 }
@@ -130,13 +174,15 @@ function progress(done, total, label) {
 }
 
 go.addEventListener('click', async () => {
-  const todo = items.filter(it => !(it.target && V.findVer(it.target, it.page.vid)));
+  const chosen = items.filter(it => it.mode !== 'skip')
+    .map(it => Object.assign({}, it, { target: it.mode === 'target' ? it.target : '', dup: it.mode === 'target' ? V.findVer(it.target, it.page.vid) : null }));
+  const todo = chosen.filter(it => !it.dup);
   if (!todo.length || busy) return;
   busy = true; go.disabled = true; err.hidden = true;
   const author = $('#up-author').value.trim(), note = $('#up-note').value.trim();
   try { localStorage.setItem(LS_AUTHOR, author); } catch (e) { /* ignore */ }
   try {
-    const done = await send(todo.map(it => Object.assign({}, it, { dup: null })), {
+    const done = await send(chosen, {
       note, author, onProgress: (f, label) => progress(Math.round(f * 100), 100, 'อัพโหลด ' + label),
     });
     const last = done[done.length - 1];

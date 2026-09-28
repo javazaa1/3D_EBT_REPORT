@@ -64,6 +64,10 @@ function render() {
   const sites = [...new Set(R.pages.map(p => p.site).filter(Boolean))];
   $('#items').innerHTML = '<datalist id="dl-site">' + sites.map(s => '<option value="' + esc(s) + '">').join('') + '</datalist>' +
     items.map((it, i) => {
+      if (it.skip) {
+        return '<div class="item dup" data-i="' + i + '"><div class="ic">🚫</div><div class="tx"><div class="t">' + esc(it.target ? R.title(it.target) : it.meta.unit) + '</div>' +
+          '<div class="s">ไม่อัพหน้านี้ · ' + esc(it.fileName) + '</div><button class="change" data-act="unskip">เอากลับมาอัพ</button></div></div>';
+      }
       if (it.dup) {
         return '<div class="item dup"><div class="ic">⏭</div><div class="tx"><div class="t">' + esc(R.title(it.target)) + '</div>' +
           '<div class="s">ไฟล์นี้อัพไปแล้ว (<span class="v">v' + it.dup.no + '</span>) — จะข้ามไป</div></div></div>';
@@ -73,7 +77,7 @@ function render() {
         return '<div class="item" data-i="' + i + '"><div class="ic">✅</div><div class="tx">' +
           '<div class="t">' + esc(R.title(it.target)) + '</div>' +
           '<div class="s">จะขึ้นเป็นเวอร์ชันใหม่ <span class="v">v' + next + '</span> · ' + esc(it.fileName) + '</div>' +
-          '<button class="change" data-act="change">ไม่ใช่หน้านี้?</button>' +
+          '<span class="acts"><button class="change" data-act="change">ไม่ใช่หน้านี้?</button><button class="change" data-act="skip">ไม่อัพหน้านี้</button></span>' +
           '<select data-f="target" hidden>' + pick(it) + '</select></div></div>';
       }
       return '<div class="item new" data-i="' + i + '"><div class="ic">🆕</div><div class="tx">' +
@@ -81,26 +85,35 @@ function render() {
         '<div class="s">' + esc(it.fileName) + '</div>' +
         '<div class="row"><label>ชื่ออุปกรณ์<input data-f="unit" value="' + esc(it.meta.unit) + '" required></label>' +
         '<label>ไซต์ / โครงการ<input data-f="site" list="dl-site" value="' + esc(it.meta.site) + '" placeholder="เช่น Rosewood Bangkok"></label></div>' +
-        (R.pages.length ? '<button class="change" data-act="change">เป็นเวอร์ชันใหม่ของหน้าที่มีอยู่?</button><select data-f="target" hidden>' + pick(it) + '</select>' : '') +
+        '<span class="acts">' + (R.pages.length ? '<button class="change" data-act="change">เป็นเวอร์ชันใหม่ของหน้าที่มีอยู่?</button>' : '') +
+        '<button class="change" data-act="skip">ไม่อัพหน้านี้</button></span>' +
+        (R.pages.length ? '<select data-f="target" hidden>' + pick(it) + '</select>' : '') +
         '</div></div>';
     }).join('');
 
   $('#items').querySelectorAll('[data-act=change]').forEach(b => b.addEventListener('click', () => {
-    b.hidden = true; b.nextElementSibling.hidden = false; b.nextElementSibling.focus();
+    const sel = b.closest('.tx').querySelector('select[data-f=target]');
+    b.closest('.acts').hidden = true; sel.hidden = false; sel.focus();
+  }));
+  $('#items').querySelectorAll('[data-act=skip],[data-act=unskip]').forEach(b => b.addEventListener('click', () => {
+    items[+b.closest('.item').dataset.i].skip = b.dataset.act === 'skip'; render();
   }));
   $('#items').querySelectorAll('[data-f]').forEach(inp => inp.addEventListener(inp.tagName === 'SELECT' ? 'change' : 'input', () => {
     const it = items[+inp.closest('.item').dataset.i];
-    if (inp.dataset.f === 'target') { it.target = inp.value; it.dup = inp.value ? R.findVer(inp.value, it.page.vid) : null; render(); }
+    if (inp.dataset.f === 'target') {
+      if (inp.value === '__skip') { it.skip = true; render(); return; }
+      it.target = inp.value; it.dup = inp.value ? R.findVer(inp.value, it.page.vid) : null; render();
+    }
     else it.meta[inp.dataset.f] = inp.value;
   }));
-  const todo = items.filter(it => !it.dup).length;
+  const todo = items.filter(it => !it.dup && !it.skip).length, skipped = items.filter(it => it.skip).length;
   $('#go').disabled = !todo;
-  $('#go').textContent = !todo ? 'ไม่มีไฟล์ใหม่' : todo > 1 ? 'อัพโหลด ' + todo + ' หน้า' : 'อัพโหลด';
+  $('#go').textContent = (!todo ? 'ไม่มีไฟล์ใหม่' : todo > 1 ? 'อัพโหลด ' + todo + ' หน้า' : 'อัพโหลด') + (skipped ? ' (ข้าม ' + skipped + ')' : '');
 }
 
 function pick(it) {
   const is3d = it.page.is3d;
-  return '<option value="">＋ สร้างเป็นหน้าใหม่</option>' + R.pages
+  return '<option value="">＋ สร้างเป็นหน้าใหม่</option><option value="__skip">🚫 ไม่อัพหน้านี้</option>' + R.pages
     .filter(p => is3d ? !/sheet/i.test(p.label) : !/3d/i.test(p.label))
     .map(p => '<option value="' + esc(p.key) + '"' + (p.key === it.target ? ' selected' : '') + '>' + esc(R.title(p.key)) +
       ' (ตอนนี้ v' + (R.latest(p.key) || {}).no + ')</option>').join('');
@@ -110,20 +123,20 @@ $('#again').addEventListener('click', () => show('s-drop'));
 $('#next').addEventListener('click', () => show('s-drop'));
 
 $('#go').addEventListener('click', async () => {
-  const bad = items.find(it => !it.dup && !it.target && !String(it.meta.unit).trim());
+  const bad = items.find(it => !it.dup && !it.skip && !it.target && !String(it.meta.unit).trim());
   if (bad) { $('#err').textContent = 'ใส่ชื่ออุปกรณ์ของหน้าใหม่ก่อน'; $('#err').hidden = false; return; }
   const author = $('#author').value.trim();
   ls.set(LS_AUTHOR, author);
   // new pages: make a readable, unique key from the name
   items.forEach(it => {
-    if (it.target || it.dup) return;
+    if (it.target || it.dup || it.skip) return;
     // keep the page code from a multi-page file when it is free, otherwise make one from the name
     it.key = it.shellKey && /^[a-z0-9][a-z0-9-]{0,39}$/.test(it.shellKey) && !R.byKey[it.shellKey]
       ? it.shellKey : newKey(R, it.meta.unit, it.page.is3d);
   });
   show('s-send');
   try {
-    const done = await send(items, {
+    const done = await send(items.filter(it => !it.skip), {
       note: $('#note').value.trim(), author,
       onProgress: (f) => { $('#bar').style.width = Math.round(f * 100) + '%'; $('#bar-t').textContent = Math.round(f * 100) + '%'; },
     });
