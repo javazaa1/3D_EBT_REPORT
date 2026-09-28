@@ -27,7 +27,13 @@
     <span id="ver-meta" class="ver-meta"></span>
     <span class="bar-act">
       <button id="ver-up" class="icon" type="button" title="อัพโหลดเวอร์ชันใหม่ของหน้านี้" hidden>⬆</button>
-      <a id="ver-src" class="icon" title="ดาวน์โหลดไฟล์ HTML ต้นฉบับของเวอร์ชันนี้">⬇</a>
+      <span class="dl">
+        <button id="ver-dl" class="icon" type="button" title="ดาวน์โหลด HTML ของเวอร์ชันนี้">⬇</button>
+        <span id="dl-menu" class="dl-menu" hidden>
+          <button type="button" id="dl-flat"><b>HTML อ่านง่าย</b><small>ไฟล์เดียว · body/CSS/JS เป็นโค้ดปกติ · เปิดออฟไลน์ได้</small></button>
+          <a id="ver-src"><b>ไฟล์ต้นฉบับ</b><small>ตรงตามที่อัพ (แบบ export ที่บีบอัดไว้)</small></a>
+        </span>
+      </span>
       <a id="ver-open" class="icon" target="_blank" rel="noopener" title="เปิดในแท็บใหม่">↗</a>
       <button id="ver-del" class="icon del" type="button" title="ลบเวอร์ชันนี้" hidden>🗑</button>
     </span>
@@ -121,6 +127,7 @@
 <script src="assets/js/api.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/comments.js"></script>
+<script src="assets/js/download.js"></script>
 <script type="module" src="assets/js/upload.js"></script>
 </body>
 </html>

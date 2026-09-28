@@ -82,7 +82,7 @@
     const base = '/p/' + cur + '/' + curVid + '/';
     $('#ver-open').href = base;
     $('#ver-src').href = '/src/' + cur + '/' + curVid + '.html';
-    $('#ver-src').setAttribute('download', cur + '-v' + (v ? v.no : '') + '.html');
+    $('#ver-src').setAttribute('download', cur + '-v' + (v ? v.no : '') + '-original.html');
     $('#ver-del').hidden = !(R.canUpload && v && v.source === 'web');
   }
   sel.addEventListener('change', () => open(cur, sel.value));
