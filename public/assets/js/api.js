@@ -66,6 +66,7 @@
     },
     checkUpload() { return req('/api/upload-auth', { cache: 'no-store' }); },
     addVersion(v) { return req('/api/versions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(v) }); },
+    notifyUpload(items, note, author) { return req('/api/versions/notify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items, note, author }) }); },
     deleteVersion(key, vid) { return req('/api/versions/' + encodeURIComponent(key) + '/' + encodeURIComponent(vid), { method: 'DELETE' }); },
 
     /* ── comments ── */

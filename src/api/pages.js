@@ -1,12 +1,15 @@
 // Pages & versions registry.
 //   GET    /api/pages                    → { pages, versions, canUpload }
 //   POST   /api/versions                 JSON {key, vid, title, is3d, note, author, page?}  (after files are PUT)
+//   POST   /api/versions/notify          JSON {items:[{key,vid}], note, author} → one Teams card per upload
 //   DELETE /api/versions/:key/:vid       web-uploaded versions only
+//   GET    /api/teams-test               send a test card to Teams
 //   PUT    /api/files/<p|lib|src>/…      raw body → R2 (web upload)
 //
 // Versions built from uploads/ in git arrive through public/p/manifest.json and are registered in D1
 // the first time the site sees them, so version numbers are stable (v1, v2, … in upload order).
 import { json, KEY_RE, VID_RE, uploadAuth, canUpload } from '../lib.js';
+import { notifyTeams, wants, pageInfo, fmtTH } from '../teams.js';
 
 const ADD_VERSION = `INSERT OR IGNORE INTO versions (key, vid, no, title, note, is3d, source, author, created_at)
   SELECT ?1, ?2, COALESCE(MAX(no), 0) + 1, ?3, ?4, ?5, ?6, ?7, ?8 FROM versions WHERE key = ?1`;
@@ -123,6 +126,49 @@ export async function addVersion({ request, env }) {
   await env.DB.batch(stmts);
   const v = await env.DB.prepare('SELECT key, vid, no, title, note, is3d, source, author, created_at FROM versions WHERE key = ? AND vid = ?').bind(key, vid).first();
   return json(v, 201);
+}
+
+/** POST /api/versions/notify { items:[{key,vid}], note?, author? } — one Teams card per upload batch */
+export async function notifyUpload({ request, env, waitUntil }) {
+  const denied = uploadAuth(request, env); if (denied) return denied;
+  if (!wants(env, 'upload')) return json({ sent: false, reason: 'off' });
+  const b = await request.json().catch(() => ({}));
+  const list = (Array.isArray(b.items) ? b.items : []).filter(x => x && KEY_RE.test(String(x.key)) && VID_RE.test(String(x.vid))).slice(0, 60);
+  if (!list.length) return json({ error: 'no items' }, 400);
+  const items = [];
+  for (const x of list) {
+    const v = await env.DB.prepare('SELECT no, author, note FROM versions WHERE key = ? AND vid = ?').bind(x.key, x.vid).first();
+    if (!v) continue;
+    const i = await pageInfo(env, x.key, x.vid);
+    items.push({ ...i, key: x.key, vid: x.vid, author: v.author, note: v.note });
+  }
+  if (!items.length) return json({ error: 'versions not found' }, 404);
+  const origin = new URL(request.url).origin, first = items[0];
+  const s = (v, n) => String(v ?? '').trim().slice(0, n);
+  const info = {
+    page: items.length === 1 ? first.page : items.length + ' หน้า',
+    version: items.length === 1 ? first.version : null,
+    items: items.length > 1 ? items : null,
+    author: s(request.headers.get('cf-access-authenticated-user-email') || b.author || first.author, 80),
+    body: s(b.note ?? first.note, 300),
+    date: fmtTH(new Date().toISOString()),
+    link: `${origin}/#${first.key}@${first.vid}`,
+  };
+  const r = notifyTeams(env, 'upload', info);
+  if (waitUntil) { waitUntil(r); return json({ sent: 'queued' }, 202); }
+  return json(await r);
+}
+
+/** GET /api/teams-test — sends a test card (needs the upload key) */
+export async function teamsTest({ request, env }) {
+  const denied = uploadAuth(request, env); if (denied) return denied;
+  if (!env.TEAMS_WEBHOOK_URL) return json({ sent: false, error: 'ยังไม่ได้ตั้ง TEAMS_WEBHOOK_URL' }, 400);
+  const origin = new URL(request.url).origin;
+  const r = await notifyTeams(env, 'test', {
+    page: 'JEC · BMS 3D Design Review', body: 'ถ้าเห็นข้อความนี้ใน Teams แปลว่าตั้งค่าเรียบร้อยแล้ว ✔',
+    date: fmtTH(new Date().toISOString()), link: origin + '/',
+  });
+  return json({ ...r, notify: String(env.TEAMS_NOTIFY || 'comment,reply,upload') }, r.sent ? 200 : 502);
 }
 
 export async function deleteVersion({ request, env, params }) {

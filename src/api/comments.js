@@ -6,6 +6,10 @@ import {
   json, PAGE_RE, VID_RE, IMAGE_TYPES, MAX_FILES, MAX_FILE_BYTES,
   parseJSON, toComment, todayTH, cleanAnchor, cleanView,
 } from '../lib.js';
+import { notifyTeams, wants, pageInfo, fmtTH } from '../teams.js';
+
+const link = (origin, page, vid, id) => `${origin}/#${page}${vid ? '@' + vid : ''}/c=${id}`;
+const later = (waitUntil, p) => { const q = p.catch(e => console.error('teams', e)); if (waitUntil) waitUntil(q); return q; };
 
 export async function list({ request, env }) {
   const page = new URL(request.url).searchParams.get('page');
@@ -16,7 +20,7 @@ export async function list({ request, env }) {
   return json({ comments: results.map(toComment) });
 }
 
-export async function create({ request, env }) {
+export async function create({ request, env, waitUntil }) {
   if (!(request.headers.get('content-type') || '').includes('multipart/form-data'))
     return json({ error: 'Send multipart/form-data' }, 415);
   const f = await request.formData();
@@ -35,8 +39,9 @@ export async function create({ request, env }) {
   const review_date = /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : todayTH();
 
   const parent_id = str('parent_id', 64) || null;
+  let p = null;
   if (parent_id) {
-    const p = await env.DB.prepare('SELECT id, page FROM comments WHERE id = ? AND parent_id IS NULL').bind(parent_id).first();
+    p = await env.DB.prepare('SELECT id, page, vid, no, body FROM comments WHERE id = ? AND parent_id IS NULL').bind(parent_id).first();
     if (!p || p.page !== page) return json({ error: 'Parent comment not found' }, 400);
   }
   const anchor = parent_id ? null : cleanAnchor(parseJSON(f.get('anchor')));
@@ -73,10 +78,24 @@ export async function create({ request, env }) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(row.id, row.page, row.vid, row.parent_id, row.no, row.author, row.part, row.body, row.review_date,
          row.anchor, row.view, row.images, row.status, row.created_at).run();
+
+  const kind = parent_id ? 'reply' : 'comment';
+  if (wants(env, kind)) later(waitUntil, (async () => {
+    const origin = new URL(request.url).origin;
+    const pv = parent_id ? p.vid : vid;
+    const info = await pageInfo(env, page, pv);
+    await notifyTeams(env, kind, {
+      ...info, author, part, body, date: fmtTH(review_date),
+      pin: parent_id ? p.no : no,
+      parentText: parent_id ? p.body : '',
+      image: images[0] ? `${origin}/api/img/${images[0].split('/').map(encodeURIComponent).join('/')}` : '',
+      link: link(origin, page, pv, parent_id || id),
+    });
+  })());
   return json(toComment(row), 201);
 }
 
-export async function update({ params, request, env }) {
+export async function update({ params, request, env, waitUntil }) {
   const p = await request.json().catch(() => ({}));
   const sets = [], vals = [];
   if (p.status !== undefined) {
@@ -99,7 +118,16 @@ export async function update({ params, request, env }) {
   sets.push('updated_at = ?'); vals.push(new Date().toISOString());
   const r = await env.DB.prepare(`UPDATE comments SET ${sets.join(', ')} WHERE id = ?`).bind(...vals, params.id).run();
   if (!r.meta.changes) return json({ error: 'Not found' }, 404);
-  return json(toComment(await env.DB.prepare('SELECT * FROM comments WHERE id = ?').bind(params.id).first()));
+  const c = await env.DB.prepare('SELECT * FROM comments WHERE id = ?').bind(params.id).first();
+  if (p.status === 'done' && wants(env, 'done')) later(waitUntil, (async () => {
+    const origin = new URL(request.url).origin;
+    const who = request.headers.get('cf-access-authenticated-user-email') || String(p.by || '').trim().slice(0, 80);
+    await notifyTeams(env, 'done', {
+      ...await pageInfo(env, c.page, c.vid), author: who, pin: c.no, part: c.part, body: c.body,
+      link: link(origin, c.page, c.vid, c.id),
+    });
+  })());
+  return json(toComment(c));
 }
 
 export async function remove({ params, env }) {

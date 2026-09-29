@@ -468,7 +468,8 @@
       try { await navigator.clipboard.writeText(url); toast('คัดลอกลิงก์แล้ว'); } catch (err) { prompt('คัดลอกลิงก์นี้', url); }
     } else if (a === 'status') {
       const status = isDone(c) ? 'open' : 'done';
-      try { await API.update(c.id, { status }); c.status = status; render(); toast(status === 'done' ? 'ทำเครื่องหมายแก้แล้ว' : 'เปิดใหม่แล้ว'); }
+      let by = ''; try { by = localStorage.getItem(LS_AUTHOR) || ''; } catch (e) { /* ignore */ }
+      try { await API.update(c.id, status === 'done' && by ? { status, by } : { status }); c.status = status; render(); toast(status === 'done' ? 'ทำเครื่องหมายแก้แล้ว' : 'เปิดใหม่แล้ว'); }
       catch (err) { toast('ไม่สำเร็จ: ' + err.message); }
     } else if (a === 'del') {
       const id = act.dataset.id;

@@ -111,5 +111,7 @@ export async function send(items, { note, author, onProgress }) {
     } catch (e) { if (!(e.data && e.data.code === 'duplicate')) throw e; }
     out.push({ key, vid });
   }
+  // one Teams message for the whole upload (ignored when Teams is not set up)
+  if (out.length) { try { await API().notifyUpload(out, note, author); } catch (e) { console.warn('teams', e); } }
   return out;
 }

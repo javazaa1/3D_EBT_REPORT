@@ -73,6 +73,21 @@ uploads/
    แล้วส่งลิงก์ `/upload#k=<รหัส>` ให้คนอัพ · จะเปลี่ยนรหัสเมื่อไหร่ก็ได้ (ลิงก์เก่าจะใช้ไม่ได้ทันที)
    ถ้าไม่ตั้ง ปุ่มอัพโหลดบนเว็บจะไม่แสดง (อัพผ่าน Git ได้ตามปกติ)
 
+## แจ้งเตือนเข้า Microsoft Teams (ไม่บังคับ)
+
+1. ใน Teams เปิดช่อง (channel) ที่อยากให้แจ้ง → `⋯` → **Workflows** → เลือกแม่แบบ
+   **"Post to a channel when a webhook request is received"** → เลือกทีม/ช่อง → **Add workflow** → คัดลอก URL
+2. Cloudflare → Workers → Worker ของเว็บ → **Settings → Variables and Secrets → Add**
+   - Type **Secret** · ชื่อ `TEAMS_WEBHOOK_URL` · ค่า = URL ที่คัดลอกมา
+   - (ไม่บังคับ) Type **Text** · ชื่อ `TEAMS_NOTIFY` · เลือกเหตุการณ์คั่นด้วยจุลภาค
+     `comment` คอมเมนต์ใหม่ · `reply` ตอบกลับ · `done` กดแก้แล้ว · `upload` อัพเวอร์ชันใหม่ — ค่าเริ่มต้น `comment,reply,upload`
+3. ทดสอบ: เปิด `https://<เว็บ>/api/teams-test` ในเบราว์เซอร์ที่ใส่รหัสอัพโหลดไว้แล้ว
+   (หรือ `curl -H "x-upload-key: <รหัส>" https://<เว็บ>/api/teams-test`) → ควรมีการ์ด 🔔 เด้งในช่อง
+
+การ์ดมีชื่อหน้า/เวอร์ชัน, ผู้คอมเมนต์, เลขหมุด, ส่วนที่ชี้, ข้อความ, รูปแรกที่แนบ และปุ่ม **เปิดดูคอมเมนต์** ที่พาไปที่หมุดนั้นตรงๆ
+การอัพหลายหน้าพร้อมกันส่งการ์ดเดียว · การอัพผ่าน git ไม่แจ้ง · ถ้าเว็บอยู่หลัง Cloudflare Access รูปในการ์ดจะไม่ขึ้น (ลิงก์ยังใช้ได้)
+ลบ `TEAMS_WEBHOOK_URL` = ปิดการแจ้งเตือน
+
 ## ความปลอดภัย
 - อัพโหลด = วาง HTML/JS บนโดเมนนี้ จึงต้องมี `UPLOAD_KEY` (หรือ login ผ่าน Cloudflare Access) — ให้เฉพาะทีม
 - คอมเมนต์: ใครมีลิงก์ก็คอมเมนต์ได้ ถ้าจะจำกัดให้ตั้ง Secret `REVIEW_KEY` หรือใช้ **Cloudflare Access**
@@ -97,6 +112,7 @@ src/                    Worker
   api/comments.js       คอมเมนต์
   api/pages.js          หน้า / เวอร์ชัน / อัพโหลดไฟล์
   api/img.js            รูปในคอมเมนต์
+  teams.js          แจ้งเตือน Microsoft Teams (Adaptive Card ผ่าน Workflows webhook)
   lib.js                helper + สร้างตาราง D1
 tools/build.mjs         แปลง uploads/ ตอน deploy
 uploads/                ไฟล์ HTML ต้นฉบับ (ทาง Git)

@@ -13,6 +13,8 @@ const ROUTES = [
   ['GET',    /^\/api\/img\/(?<path>.+)$/,                 serveImage],
   ['GET',    /^\/api\/pages$/,                            pages.listPages],
   ['POST',   /^\/api\/versions$/,                         pages.addVersion],
+  ['POST',   /^\/api\/versions\/notify$/,                  pages.notifyUpload],
+  ['GET',    /^\/api\/teams-test$/,                         pages.teamsTest],
   ['DELETE', /^\/api\/versions\/(?<key>[^/]+)\/(?<vid>[^/]+)$/, pages.deleteVersion],
   ['PUT',    /^\/api\/files\/(?<path>.+)$/,               pages.putFile],
   ['GET',    /^\/api\/upload-auth$/,                     pages.checkUpload],
