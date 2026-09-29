@@ -159,8 +159,11 @@ export async function notifyUpload({ request, env, waitUntil }) {
   return json(await r);
 }
 
-/** GET /api/teams-test — sends a test card (needs the upload key) */
+/** GET /api/teams-test[?k=<UPLOAD_KEY>] — sends a test card (needs the upload key) */
 export async function teamsTest({ request, env }) {
+  // opened straight in the browser: /api/teams-test?k=<UPLOAD_KEY>
+  const k = new URL(request.url).searchParams.get('k');
+  if (k) { request = new Request(request); request.headers.set('x-upload-key', k); }
   const denied = uploadAuth(request, env); if (denied) return denied;
   if (!env.TEAMS_WEBHOOK_URL) return json({ sent: false, error: 'ยังไม่ได้ตั้ง TEAMS_WEBHOOK_URL' }, 400);
   const origin = new URL(request.url).origin;
